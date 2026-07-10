@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Optional;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Test;
 import tech.pegasys.teku.spec.Spec;
@@ -116,5 +117,31 @@ class NewPayloadRequestHasherTest {
             MAX_VERSIONED_HASHES);
 
     assertThat(bellatrixShapeRoot).isNotEqualTo(denebShapeRoot);
+  }
+
+  @Test
+  void sszSerialize_producesStableNonEmptyBytesConsistentWithTheRoot() {
+    final Spec spec = TestSpecFactory.createMinimalElectra();
+    final DataStructureUtil dataStructureUtil = new DataStructureUtil(spec);
+    final ExecutionPayload executionPayload = dataStructureUtil.randomExecutionPayload();
+    final List<VersionedHash> versionedHashes = dataStructureUtil.randomVersionedHashes(2);
+    final Bytes32 parentBeaconBlockRoot = dataStructureUtil.randomBytes32();
+    final ExecutionRequests executionRequests = dataStructureUtil.randomExecutionRequests();
+    final NewPayloadRequest request =
+        new NewPayloadRequest(executionPayload, versionedHashes, parentBeaconBlockRoot, List.of());
+
+    final Bytes serialized1 =
+        NewPayloadRequestHasher.sszSerialize(
+            request, Optional.of(executionRequests), MAX_VERSIONED_HASHES);
+    final Bytes serialized2 =
+        NewPayloadRequestHasher.sszSerialize(
+            request, Optional.of(executionRequests), MAX_VERSIONED_HASHES);
+    final Bytes32 root =
+        NewPayloadRequestHasher.hashTreeRoot(
+            request, Optional.of(executionRequests), MAX_VERSIONED_HASHES);
+
+    assertThat(serialized1.size()).isPositive();
+    assertThat(serialized1).isEqualTo(serialized2);
+    assertThat(root).isNotEqualTo(DEFAULT_ROOT);
   }
 }

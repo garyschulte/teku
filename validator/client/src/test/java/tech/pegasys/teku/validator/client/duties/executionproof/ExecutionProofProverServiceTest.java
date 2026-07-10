@@ -36,6 +36,7 @@ import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.TestSpecFactory;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.ProofType;
 import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.state.ForkInfo;
 import tech.pegasys.teku.spec.signatures.Signer;
@@ -67,7 +68,8 @@ class ExecutionProofProverServiceTest {
           validatorApiChannel,
           validators,
           validatorIndexProvider,
-          proverClient);
+          proverClient,
+          ProofType.RETH_ZISK);
 
   @BeforeEach
   void setUp() {
@@ -87,7 +89,7 @@ class ExecutionProofProverServiceTest {
     when(validatorApiChannel.getBeaconBlockByRoot(headBlockRoot))
         .thenReturn(SafeFuture.completedFuture(Optional.of(block)));
     final Bytes proofData = Bytes.fromHexString("0xabcdef");
-    when(proverClient.requestProof(any(), eq(ExecutionProofProverService.PROOF_TYPE), any()))
+    when(proverClient.requestProof(any(), eq(ProofType.RETH_ZISK.getValue()), any()))
         .thenReturn(SafeFuture.completedFuture(proofData));
     when(validatorApiChannel.sendSignedExecutionProof(any())).thenReturn(SafeFuture.COMPLETE);
 
@@ -97,7 +99,7 @@ class ExecutionProofProverServiceTest {
         dataStructureUtil.randomBytes32(),
         headBlockRoot);
 
-    verify(proverClient).requestProof(any(), eq(ExecutionProofProverService.PROOF_TYPE), any());
+    verify(proverClient).requestProof(any(), eq(ProofType.RETH_ZISK.getValue()), any());
     final ArgumentCaptor<SignedExecutionProof> captor =
         ArgumentCaptor.forClass(SignedExecutionProof.class);
     verify(validatorApiChannel).sendSignedExecutionProof(captor.capture());
@@ -117,7 +119,8 @@ class ExecutionProofProverServiceTest {
             validatorApiChannel,
             emptyValidators,
             validatorIndexProvider,
-            proverClient);
+            proverClient,
+            ProofType.RETH_ZISK);
 
     serviceWithNoValidators.onHeadUpdate(
         UInt64.ONE,

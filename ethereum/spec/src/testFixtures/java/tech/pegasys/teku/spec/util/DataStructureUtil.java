@@ -3148,7 +3148,9 @@ public final class DataStructureUtil {
         getElectraSchemaDefinitions().getExecutionProofSchema();
     return executionProofSchema.create(
         randomBytes(5),
-        randomInt(256),
+        // 7 == tech.pegasys.teku.spec.datastructures.execution.ProofType.values().length - only
+        // those values are recognized by gossip validation, everything else is IGNOREd.
+        randomInt(7),
         executionProofSchema.getPublicInputSchema().create(randomBytes32()));
   }
 

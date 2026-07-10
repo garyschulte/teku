@@ -16,6 +16,7 @@ package tech.pegasys.teku.statetransition.executionproofs.verifier;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.Optional;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.HttpUrl;
@@ -30,13 +31,19 @@ import org.apache.logging.log4j.Logger;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
+import tech.pegasys.teku.spec.datastructures.execution.ProofType;
 
 /**
- * HTTP client for a zkboost-shaped external verifier service. POSTs raw proof bytes to {@code
+ * HTTP client for zkboost's real verifier endpoint, confirmed against {@code eth-act/lighthouse}'s
+ * {@code optional-proofs} branch (the actual interop reference implementation, not a guess): POSTs
+ * raw proof bytes to {@code
  * {endpoint}/v1/execution_proof_verifications?new_payload_request_root=...&proof_type=...} and
- * expects a JSON response body like {@code {"status": "VALID"}} on success, per Prysm's
- * zkProofVerifier. This has NOT been cross-verified against zkboost's actual response schema
- * end-to-end - treat as best-effort pending such verification (see EIP-8025 gap-analysis M6 notes).
+ * expects a JSON response body {@code {"status": "VALID"|"INVALID"}}.
+ *
+ * <p>zkboost's {@code proof_type} query parameter is a kebab-case zkVM identifier string (e.g.
+ * {@code "reth-zisk"}), not the raw numeric {@code proof_type} carried in the SSZ {@link
+ * tech.pegasys.teku.spec.datastructures.execution.ExecutionProof} - {@link ProofType} bridges the
+ * two, matching the canonical mapping Lighthouse itself uses.
  */
 public class RestExecutionProofVerifierClient implements ExecutionProofVerifierClient {
 
@@ -60,11 +67,16 @@ public class RestExecutionProofVerifierClient implements ExecutionProofVerifierC
   @Override
   public SafeFuture<Boolean> verify(
       final Bytes32 newPayloadRequestRoot, final int proofType, final Bytes proofData) {
+    final Optional<ProofType> proofTypeIdentifier = ProofType.fromValue(proofType);
+    if (proofTypeIdentifier.isEmpty()) {
+      LOG.debug("No known zkVM identifier for proof type {}, cannot verify", proofType);
+      return SafeFuture.completedFuture(false);
+    }
     final HttpUrl url =
         verificationsUrl
             .newBuilder()
             .addQueryParameter("new_payload_request_root", newPayloadRequestRoot.toHexString())
-            .addQueryParameter("proof_type", Integer.toString(proofType))
+            .addQueryParameter("proof_type", proofTypeIdentifier.get().getIdentifier())
             .build();
     final RequestBody body = RequestBody.create(proofData.toArrayUnsafe(), OCTET_STREAM_MEDIA_TYPE);
     final Request request = new Request.Builder().url(url).post(body).build();

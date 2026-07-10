@@ -18,20 +18,24 @@ import org.apache.tuweni.bytes.Bytes32;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 
 /**
- * Client for an external, zkboost-shaped EIP-8025 prover service: submits a block for proving and
- * asynchronously returns the resulting proof bytes once the prover completes.
+ * Client for an external, zkboost-shaped EIP-8025 prover service: submits a {@code
+ * NewPayloadRequest} for proving and asynchronously returns the resulting proof bytes once the
+ * prover completes.
  */
 public interface ExecutionProofProverClient {
 
   ExecutionProofProverClient NOOP =
-      (newPayloadRequestRoot, proofType, blockSsz) ->
+      (newPayloadRequestRoot, proofType, newPayloadRequestSsz) ->
           SafeFuture.failedFuture(
               new UnsupportedOperationException("No execution proof prover endpoint configured"));
 
   /**
-   * Requests a proof of type {@code proofType} for the block whose SSZ-serialized bytes are {@code
-   * blockSsz}, keyed by its {@code new_payload_request_root}. The prover is expected to be a
-   * long-running, asynchronous job - the returned future resolves once the proof is ready.
+   * Requests a proof of type {@code proofType} for the block whose {@code NewPayloadRequest}
+   * SSZ-serialized bytes are {@code newPayloadRequestSsz} (see {@code
+   * NewPayloadRequestHasher#sszSerialize}), keyed by its {@code new_payload_request_root}. The
+   * prover is expected to be a long-running, asynchronous job - the returned future resolves once
+   * the proof is ready.
    */
-  SafeFuture<Bytes> requestProof(Bytes32 newPayloadRequestRoot, int proofType, Bytes blockSsz);
+  SafeFuture<Bytes> requestProof(
+      Bytes32 newPayloadRequestRoot, int proofType, Bytes newPayloadRequestSsz);
 }

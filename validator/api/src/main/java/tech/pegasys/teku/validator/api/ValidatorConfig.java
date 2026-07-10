@@ -117,6 +117,7 @@ public class ValidatorConfig {
   private final boolean attestationsV2ApisEnabled;
   private final boolean executionProofProverEnabled;
   private final Optional<String> executionProofProverEndpoint;
+  private final Optional<String> executionProofType;
 
   private ValidatorConfig(
       final List<String> validatorKeys,
@@ -160,7 +161,8 @@ public class ValidatorConfig {
       final boolean dvtSelectionsEndpointEnabled,
       final boolean attestationsV2ApisEnabled,
       final boolean executionProofProverEnabled,
-      final Optional<String> executionProofProverEndpoint) {
+      final Optional<String> executionProofProverEndpoint,
+      final Optional<String> executionProofType) {
     this.validatorKeys = validatorKeys;
     this.validatorExternalSignerPublicKeySources = validatorExternalSignerPublicKeySources;
     this.validatorExternalSignerUrl = validatorExternalSignerUrl;
@@ -208,6 +210,7 @@ public class ValidatorConfig {
     this.attestationsV2ApisEnabled = attestationsV2ApisEnabled;
     this.executionProofProverEnabled = executionProofProverEnabled;
     this.executionProofProverEndpoint = executionProofProverEndpoint;
+    this.executionProofType = executionProofType;
 
     LOG.debug(
         "Executor queue - {} threads, max queue size {} ", executorThreads, executorMaxQueueSize);
@@ -393,6 +396,10 @@ public class ValidatorConfig {
     return executionProofProverEndpoint;
   }
 
+  public Optional<String> getExecutionProofType() {
+    return executionProofType;
+  }
+
   public static final class Builder {
     private List<String> validatorKeys = new ArrayList<>();
     private List<String> validatorExternalSignerPublicKeySources = new ArrayList<>();
@@ -449,6 +456,7 @@ public class ValidatorConfig {
     private boolean attestationsV2ApisEnabled = DEFAULT_ATTESTATIONS_V2_APIS_ENABLED;
     private boolean executionProofProverEnabled = DEFAULT_EXECUTION_PROOF_PROVER_ENABLED;
     private Optional<String> executionProofProverEndpoint = Optional.empty();
+    private Optional<String> executionProofType = Optional.empty();
 
     private Builder() {}
 
@@ -723,6 +731,11 @@ public class ValidatorConfig {
       return this;
     }
 
+    public Builder executionProofType(final String executionProofType) {
+      this.executionProofType = Optional.ofNullable(executionProofType);
+      return this;
+    }
+
     public ValidatorConfig build() {
       validateExternalSignerUrlAndPublicKeys();
       validateExternalSignerKeystoreAndPasswordFileConfig();
@@ -770,7 +783,8 @@ public class ValidatorConfig {
           dvtSelectionsEndpointEnabled,
           attestationsV2ApisEnabled,
           executionProofProverEnabled,
-          executionProofProverEndpoint);
+          executionProofProverEndpoint,
+          executionProofType);
     }
 
     private void validateExternalSignerUrlAndPublicKeys() {

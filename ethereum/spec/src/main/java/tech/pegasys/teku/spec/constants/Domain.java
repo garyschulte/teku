@@ -38,6 +38,7 @@ public class Domain {
   public static final Bytes4 BEACON_BUILDER = Bytes4.fromHexString("0x1B000000");
   public static final Bytes4 PTC_ATTESTER = Bytes4.fromHexString("0x0C000000");
 
-  // EIP-8025
-  public static final Bytes4 EXECUTION_PROOF = Bytes4.fromHexString("0x0F000000");
+  // EIP-8025 - confirmed against eth-act/lighthouse's optional-proofs branch
+  // (consensus/types/src/core/chain_spec.rs), the actual interop reference implementation.
+  public static final Bytes4 EXECUTION_PROOF = Bytes4.fromHexString("0x0D000000");
 }

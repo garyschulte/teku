@@ -30,6 +30,7 @@ import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
 import tech.pegasys.teku.spec.datastructures.execution.NewPayloadRequest;
 import tech.pegasys.teku.spec.datastructures.execution.NewPayloadRequestBuilder;
 import tech.pegasys.teku.spec.datastructures.execution.NewPayloadRequestHasher;
+import tech.pegasys.teku.spec.datastructures.execution.ProofType;
 import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ExecutionRequests;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
@@ -57,12 +58,6 @@ public class ExecutionProofProverService implements ValidatorTimingChannel {
 
   private static final Logger LOG = LogManager.getLogger();
 
-  /**
-   * The only proof type this prover requests in this pass - EIP-8025 allows multiple provers to
-   * submit different proof types for the same block, but fanning out to many is out of scope here.
-   */
-  public static final int PROOF_TYPE = 0;
-
   private final Spec spec;
   private final ForkProvider forkProvider;
   private final ValidatorApiChannel validatorApiChannel;
@@ -70,19 +65,28 @@ public class ExecutionProofProverService implements ValidatorTimingChannel {
   private final ValidatorIndexProvider validatorIndexProvider;
   private final ExecutionProofProverClient proverClient;
 
+  /**
+   * The only proof type this prover requests in this pass - EIP-8025 allows multiple provers to
+   * submit different proof types for the same block, but fanning out to many is out of scope here.
+   * Which zkVM/prover a configured zkboost instance actually runs is deployment-specific.
+   */
+  private final ProofType proofType;
+
   public ExecutionProofProverService(
       final Spec spec,
       final ForkProvider forkProvider,
       final ValidatorApiChannel validatorApiChannel,
       final OwnedValidators validators,
       final ValidatorIndexProvider validatorIndexProvider,
-      final ExecutionProofProverClient proverClient) {
+      final ExecutionProofProverClient proverClient,
+      final ProofType proofType) {
     this.spec = spec;
     this.forkProvider = forkProvider;
     this.validatorApiChannel = validatorApiChannel;
     this.validators = validators;
     this.validatorIndexProvider = validatorIndexProvider;
     this.proverClient = proverClient;
+    this.proofType = proofType;
   }
 
   @Override
@@ -118,17 +122,32 @@ public class ExecutionProofProverService implements ValidatorTimingChannel {
       return;
     }
     final Bytes32 newPayloadRequestRoot;
+    final Bytes newPayloadRequestSsz;
     try {
-      newPayloadRequestRoot = computeNewPayloadRequestRoot(block);
+      final NewPayloadRequest newPayloadRequest = NewPayloadRequestBuilder.fromBlock(spec, block);
+      final Optional<ExecutionRequests> executionRequests =
+          block.getMessage().getBody().getOptionalExecutionRequests();
+      final int maxVersionedHashesPerBlock =
+          spec.atSlot(block.getSlot())
+              .getConfig()
+              .toVersionDeneb()
+              .map(SpecConfigDeneb::getMaxBlobCommitmentsPerBlock)
+              .orElse(0);
+      newPayloadRequestRoot =
+          NewPayloadRequestHasher.hashTreeRoot(
+              newPayloadRequest, executionRequests, maxVersionedHashesPerBlock);
+      newPayloadRequestSsz =
+          NewPayloadRequestHasher.sszSerialize(
+              newPayloadRequest, executionRequests, maxVersionedHashesPerBlock);
     } catch (final RuntimeException e) {
       LOG.debug(
-          "Failed to compute new_payload_request_root for block {}, skipping proof generation",
+          "Failed to build new_payload_request for block {}, skipping proof generation",
           block.getRoot(),
           e);
       return;
     }
     proverClient
-        .requestProof(newPayloadRequestRoot, PROOF_TYPE, block.sszSerialize())
+        .requestProof(newPayloadRequestRoot, proofType.getValue(), newPayloadRequestSsz)
         .thenCompose(proofData -> signAndSubmit(newPayloadRequestRoot, proofData, block.getSlot()))
         .finish(
             error ->
@@ -136,20 +155,6 @@ public class ExecutionProofProverService implements ValidatorTimingChannel {
                     "Failed to generate/submit execution proof for block {}",
                     block.getRoot(),
                     error));
-  }
-
-  private Bytes32 computeNewPayloadRequestRoot(final SignedBeaconBlock block) {
-    final NewPayloadRequest newPayloadRequest = NewPayloadRequestBuilder.fromBlock(spec, block);
-    final Optional<ExecutionRequests> executionRequests =
-        block.getMessage().getBody().getOptionalExecutionRequests();
-    final int maxVersionedHashesPerBlock =
-        spec.atSlot(block.getSlot())
-            .getConfig()
-            .toVersionDeneb()
-            .map(SpecConfigDeneb::getMaxBlobCommitmentsPerBlock)
-            .orElse(0);
-    return NewPayloadRequestHasher.hashTreeRoot(
-        newPayloadRequest, executionRequests, maxVersionedHashesPerBlock);
   }
 
   private SafeFuture<Void> signAndSubmit(
@@ -165,7 +170,7 @@ public class ExecutionProofProverService implements ValidatorTimingChannel {
             .getExecutionProofSchema()
             .create(
                 proofData,
-                PROOF_TYPE,
+                proofType.getValue(),
                 schemaDefinitionsElectra
                     .getExecutionProofSchema()
                     .getPublicInputSchema()

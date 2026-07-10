@@ -212,6 +212,17 @@ public class ValidatorOptions {
       arity = "1")
   private String executionProofProverEndpoint;
 
+  @Option(
+      hidden = true,
+      names = {"--Xexecution-proof-type"},
+      paramLabel = "<PROOF_TYPE>",
+      description =
+          "The zkVM/prover identifier (e.g. \"reth-zisk\") this node's execution-proof prover"
+              + " requests from the configured prover service. Must be one of the identifiers a"
+              + " configured zkboost-shaped service supports.",
+      arity = "1")
+  private String executionProofType;
+
   public void configure(final TekuConfiguration.Builder builder) {
     builder.validator(
         config ->
@@ -235,7 +246,8 @@ public class ValidatorOptions {
                 .beaconApiExecutorThreads(beaconApiExecutorThreads)
                 .beaconApiReadinessExecutorThreads(beaconApiReadinessExecutorThreads)
                 .executionProofProverEnabled(executionProofProverEnabled)
-                .executionProofProverEndpoint(executionProofProverEndpoint));
+                .executionProofProverEndpoint(executionProofProverEndpoint)
+                .executionProofType(executionProofType));
     validatorProposerOptions.configure(builder);
     validatorKeysOptions.configure(builder);
   }

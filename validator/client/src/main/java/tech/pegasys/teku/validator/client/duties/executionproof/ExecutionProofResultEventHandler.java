@@ -18,28 +18,39 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.launchdarkly.eventsource.MessageEvent;
 import com.launchdarkly.eventsource.background.BackgroundEventHandler;
 import java.io.IOException;
+import java.util.function.Consumer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.tuweni.bytes.Bytes;
-import tech.pegasys.teku.infrastructure.async.SafeFuture;
+import org.apache.tuweni.bytes.Bytes32;
 
 /**
- * Completes a pending proof-request future from a single zkboost-shaped SSE result event, shaped
- * like {@code {"proof_data": "0x..."}}. Extracted from {@link RestExecutionProofProverClient} so
- * the event-parsing logic can be unit tested directly, without a live SSE connection (mirroring
- * {@code EventSourceHandler}, which is tested the same way).
+ * Watches zkboost's shared {@code GET /v1/execution_proof_requests} SSE stream (filtered
+ * server-side to a single {@code new_payload_request_root}) for the {@code "proof_complete"} /
+ * {@code "proof_failure"} named events documented in {@code eth-act/lighthouse}'s {@code
+ * beacon_node/execution_layer/src/eip8025/types.rs}. The event itself only carries a
+ * root/proof_type notification, not the proof bytes - {@link RestExecutionProofProverClient}
+ * fetches those separately via {@code GET /v1/execution_proofs/{root}/{proof_type}} once notified.
+ * Extracted into its own class so the event-parsing logic is unit-testable without a live SSE
+ * connection (mirrors the existing {@code EventSourceHandler} pattern).
  */
 class ExecutionProofResultEventHandler implements BackgroundEventHandler {
 
   private static final Logger LOG = LogManager.getLogger();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  private final SafeFuture<Bytes> result;
+  private final Bytes32 expectedRoot;
+  private final Runnable onProofComplete;
+  private final Consumer<Throwable> onFailure;
   private final Runnable onEventProcessed;
 
   ExecutionProofResultEventHandler(
-      final SafeFuture<Bytes> result, final Runnable onEventProcessed) {
-    this.result = result;
+      final Bytes32 expectedRoot,
+      final Runnable onProofComplete,
+      final Consumer<Throwable> onFailure,
+      final Runnable onEventProcessed) {
+    this.expectedRoot = expectedRoot;
+    this.onProofComplete = onProofComplete;
+    this.onFailure = onFailure;
     this.onEventProcessed = onEventProcessed;
   }
 
@@ -51,8 +62,11 @@ class ExecutionProofResultEventHandler implements BackgroundEventHandler {
 
   @Override
   public void onMessage(final String event, final MessageEvent messageEvent) {
-    completeFromEvent(messageEvent.getData());
-    onEventProcessed.run();
+    switch (event) {
+      case "proof_complete" -> handleProofComplete(messageEvent.getData());
+      case "proof_failure" -> handleProofFailure(messageEvent.getData());
+      default -> LOG.trace("Ignoring unexpected zkboost SSE event '{}'", event);
+    }
   }
 
   @Override
@@ -60,17 +74,43 @@ class ExecutionProofResultEventHandler implements BackgroundEventHandler {
 
   @Override
   public void onError(final Throwable throwable) {
-    result.completeExceptionally(throwable);
+    onFailure.accept(throwable);
     onEventProcessed.run();
   }
 
-  private void completeFromEvent(final String data) {
+  private void handleProofComplete(final String data) {
+    if (!matchesExpectedRoot(data)) {
+      return;
+    }
+    onProofComplete.run();
+    onEventProcessed.run();
+  }
+
+  private void handleProofFailure(final String data) {
+    if (!matchesExpectedRoot(data)) {
+      return;
+    }
     try {
       final JsonNode node = OBJECT_MAPPER.readTree(data);
-      result.complete(Bytes.fromHexString(node.path("proof_data").asText()));
+      final String reason = node.path("reason").asText("unknown");
+      final String error = node.path("error").asText("");
+      onFailure.accept(
+          new RuntimeException(
+              "Execution proof request failed - reason: " + reason + ", error: " + error));
+    } catch (final IOException e) {
+      onFailure.accept(e);
+    }
+    onEventProcessed.run();
+  }
+
+  private boolean matchesExpectedRoot(final String data) {
+    try {
+      final JsonNode node = OBJECT_MAPPER.readTree(data);
+      final Bytes32 root = Bytes32.fromHexString(node.path("new_payload_request_root").asText());
+      return root.equals(expectedRoot);
     } catch (final IOException | IllegalArgumentException e) {
-      LOG.debug("Failed to parse execution proof result event '{}'", data, e);
-      result.completeExceptionally(e);
+      LOG.debug("Failed to parse zkboost SSE event '{}'", data, e);
+      return false;
     }
   }
 }

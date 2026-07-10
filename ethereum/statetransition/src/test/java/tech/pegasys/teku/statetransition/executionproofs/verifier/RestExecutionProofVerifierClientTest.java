@@ -24,6 +24,7 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tech.pegasys.teku.spec.datastructures.execution.ProofType;
 
 class RestExecutionProofVerifierClientTest {
 
@@ -49,7 +50,8 @@ class RestExecutionProofVerifierClientTest {
     final Bytes32 newPayloadRequestRoot = Bytes32.fromHexStringLenient("0x01");
     final Bytes proofData = Bytes.fromHexString("0x0123");
 
-    final boolean result = client.verify(newPayloadRequestRoot, 3, proofData).join();
+    final boolean result =
+        client.verify(newPayloadRequestRoot, ProofType.RETH_ZISK.getValue(), proofData).join();
 
     assertThat(result).isTrue();
 
@@ -58,7 +60,7 @@ class RestExecutionProofVerifierClientTest {
     assertThat(recordedRequest.getPath())
         .startsWith("/v1/execution_proof_verifications")
         .contains("new_payload_request_root=" + newPayloadRequestRoot.toHexString())
-        .contains("proof_type=3");
+        .contains("proof_type=reth-zisk");
     assertThat(recordedRequest.getBody().readByteArray()).isEqualTo(proofData.toArrayUnsafe());
   }
 
@@ -85,6 +87,17 @@ class RestExecutionProofVerifierClientTest {
             .join();
 
     assertThat(result).isFalse();
+  }
+
+  @Test
+  void returnsFalseForUnknownProofTypeWithoutMakingARequest() {
+    final boolean result =
+        client
+            .verify(Bytes32.fromHexStringLenient("0x01"), 99, Bytes.fromHexString("0x0123"))
+            .join();
+
+    assertThat(result).isFalse();
+    assertThat(mockWebServer.getRequestCount()).isZero();
   }
 
   @Test

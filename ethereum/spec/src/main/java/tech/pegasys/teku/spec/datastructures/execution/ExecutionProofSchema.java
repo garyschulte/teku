@@ -24,10 +24,12 @@ import tech.pegasys.teku.infrastructure.ssz.tree.TreeNode;
 public class ExecutionProofSchema
     extends ContainerSchema3<ExecutionProof, SszByteList, SszByte, PublicInput> {
 
-  // Matches Prysm's optional-proofs branch (OffchainLabs/prysm), the interop target for this
-  // feature. The eip8025 consensus-specs text currently says 4 MiB but that constant is still
-  // in flux upstream; Lighthouse's earlier prototype used 1 MiB. Revisit once the spec settles.
-  public static final long MAX_PROOF_SIZE = 300_000;
+  // Matches eth-act/lighthouse's optional-proofs branch (consensus/types/src/execution/eip8025.rs
+  // - MaxProofSizeKiB = 1344), the actual interop reference implementation used by the ecosystem's
+  // shared Kurtosis zkboost devnet config. The eip8025 consensus-specs text currently says 4 MiB
+  // but that constant is still in flux upstream - this matches the real running devnet, not the
+  // spec text.
+  public static final long MAX_PROOF_SIZE = 1_376_256;
 
   public ExecutionProofSchema() {
     super(

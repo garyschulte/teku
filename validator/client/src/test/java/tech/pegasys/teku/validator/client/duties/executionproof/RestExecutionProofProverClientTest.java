@@ -27,6 +27,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
+import tech.pegasys.teku.spec.datastructures.execution.ProofType;
 
 class RestExecutionProofProverClientTest {
 
@@ -48,24 +49,47 @@ class RestExecutionProofProverClientTest {
   }
 
   @Test
-  void requestProof_submitsBlockBytesAsOctetStreamWithCorrectQueryParams() throws Exception {
+  void requestProof_submitsNewPayloadRequestBytesWithProofTypesQueryParam() throws Exception {
     final Bytes32 newPayloadRequestRoot = Bytes32.fromHexStringLenient("0x01");
-    final Bytes blockSsz = Bytes.fromHexString("0xabcdef");
-    mockWebServer.enqueue(new MockResponse().setResponseCode(202));
-    // second request is the SSE GET the client opens after a successful submission - respond with
-    // a plain 404 so the background event source's onError fires quickly rather than idling.
+    final Bytes newPayloadRequestSsz = Bytes.fromHexString("0xabcdef");
+    mockWebServer.enqueue(
+        new MockResponse()
+            .setResponseCode(200)
+            .setBody(
+                "{\"new_payload_request_root\": \"" + newPayloadRequestRoot.toHexString() + "\"}"));
+    // second request is the SSE GET opened after a successful submission - respond with a plain
+    // 404 so the background event source's onError fires quickly rather than idling.
     mockWebServer.enqueue(new MockResponse().setResponseCode(404));
 
-    final SafeFuture<Bytes> ignored = client.requestProof(newPayloadRequestRoot, 3, blockSsz);
+    final SafeFuture<Bytes> ignored =
+        client.requestProof(
+            newPayloadRequestRoot, ProofType.RETH_ZISK.getValue(), newPayloadRequestSsz);
 
     final RecordedRequest submitRequest = mockWebServer.takeRequest(5, TimeUnit.SECONDS);
     assertThat(submitRequest).isNotNull();
     assertThat(submitRequest.getMethod()).isEqualTo("POST");
     assertThat(submitRequest.getPath())
         .startsWith("/v1/execution_proof_requests")
-        .contains("new_payload_request_root=" + newPayloadRequestRoot.toHexString())
-        .contains("proof_type=3");
-    assertThat(submitRequest.getBody().readByteArray()).isEqualTo(blockSsz.toArrayUnsafe());
+        .contains("proof_types=reth-zisk");
+    assertThat(submitRequest.getBody().readByteArray())
+        .isEqualTo(newPayloadRequestSsz.toArrayUnsafe());
+
+    final RecordedRequest sseRequest = mockWebServer.takeRequest(5, TimeUnit.SECONDS);
+    assertThat(sseRequest).isNotNull();
+    assertThat(sseRequest.getMethod()).isEqualTo("GET");
+    assertThat(sseRequest.getPath())
+        .startsWith("/v1/execution_proof_requests")
+        .contains("new_payload_request_root=" + newPayloadRequestRoot.toHexString());
+  }
+
+  @Test
+  void requestProof_failsTheFutureForUnknownProofType() {
+    final SafeFuture<Bytes> result =
+        client.requestProof(
+            Bytes32.fromHexStringLenient("0x01"), 99, Bytes.fromHexString("0x0123"));
+
+    assertThat(result.isCompletedExceptionally()).isTrue();
+    assertThat(mockWebServer.getRequestCount()).isZero();
   }
 
   @Test
@@ -73,7 +97,10 @@ class RestExecutionProofProverClientTest {
     mockWebServer.enqueue(new MockResponse().setResponseCode(400));
 
     final SafeFuture<Bytes> result =
-        client.requestProof(Bytes32.fromHexStringLenient("0x01"), 0, Bytes.fromHexString("0x0123"));
+        client.requestProof(
+            Bytes32.fromHexStringLenient("0x01"),
+            ProofType.RETH_ZISK.getValue(),
+            Bytes.fromHexString("0x0123"));
 
     final boolean threw = result.handle((value, error) -> error != null).join();
     assertThat(threw).isTrue();
@@ -84,7 +111,10 @@ class RestExecutionProofProverClientTest {
     mockWebServer.shutdown();
 
     final SafeFuture<Bytes> result =
-        client.requestProof(Bytes32.fromHexStringLenient("0x01"), 0, Bytes.fromHexString("0x0123"));
+        client.requestProof(
+            Bytes32.fromHexStringLenient("0x01"),
+            ProofType.RETH_ZISK.getValue(),
+            Bytes.fromHexString("0x0123"));
 
     final boolean threw = result.handle((value, error) -> error != null).join();
     assertThat(threw).isTrue();

@@ -50,6 +50,7 @@ import tech.pegasys.teku.service.serviceutils.ServiceConfig;
 import tech.pegasys.teku.service.serviceutils.layout.DataDirLayout;
 import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.SpecMilestone;
+import tech.pegasys.teku.spec.datastructures.execution.ProofType;
 import tech.pegasys.teku.spec.signatures.LocalSlashingProtector;
 import tech.pegasys.teku.spec.signatures.LocalSlashingProtectorConcurrentAccess;
 import tech.pegasys.teku.spec.signatures.SlashingProtector;
@@ -575,24 +576,39 @@ public class ValidatorClientService extends Service {
         validatorStatusLogger::onUpdatedValidatorStatuses);
 
     if (config.getValidatorConfig().isExecutionProofProverEnabled()) {
-      config
-          .getValidatorConfig()
-          .getExecutionProofProverEndpoint()
-          .ifPresentOrElse(
-              endpoint ->
-                  validatorTimingChannels.add(
-                      new ExecutionProofProverService(
-                          spec,
-                          forkProvider,
-                          validatorApiChannel,
-                          validators,
-                          validatorIndexProvider,
-                          new RestExecutionProofProverClient(new OkHttpClient(), endpoint))),
-              () ->
-                  LOG.warn(
-                      "--Xexecution-proof-prover-enabled is set but --Xexecution-proof-prover-endpoint"
-                          + " is not configured; the execution-proof prover duty will not run."));
+      configureExecutionProofProverService(config, validatorApiChannel, validators);
     }
+  }
+
+  private void configureExecutionProofProverService(
+      final ValidatorClientConfiguration config,
+      final ValidatorApiChannel validatorApiChannel,
+      final OwnedValidators validators) {
+    final Optional<String> endpoint = config.getValidatorConfig().getExecutionProofProverEndpoint();
+    if (endpoint.isEmpty()) {
+      LOG.warn(
+          "--Xexecution-proof-prover-enabled is set but --Xexecution-proof-prover-endpoint is not"
+              + " configured; the execution-proof prover duty will not run.");
+      return;
+    }
+    final Optional<ProofType> proofType =
+        config.getValidatorConfig().getExecutionProofType().flatMap(ProofType::fromIdentifier);
+    if (proofType.isEmpty()) {
+      LOG.warn(
+          "--Xexecution-proof-prover-enabled is set but --Xexecution-proof-type ({}) is not a"
+              + " known zkVM identifier; the execution-proof prover duty will not run.",
+          config.getValidatorConfig().getExecutionProofType());
+      return;
+    }
+    validatorTimingChannels.add(
+        new ExecutionProofProverService(
+            spec,
+            forkProvider,
+            validatorApiChannel,
+            validators,
+            validatorIndexProvider,
+            new RestExecutionProofProverClient(new OkHttpClient(), endpoint.get()),
+            proofType.get()));
   }
 
   public static Path getSlashingProtectionPath(final DataDirLayout dataDirLayout) {

@@ -181,4 +181,29 @@ class ExecutionProofGossipValidatorTest {
     assertThat(validator.validate(proof)).isCompletedWithValue(InternalValidationResult.ACCEPT);
     assertThat(validator.validate(proof)).isCompletedWithValue(InternalValidationResult.IGNORE);
   }
+
+  @Test
+  void ignoresAnUnrecognizedProofType() {
+    final ExecutionProof executionProof =
+        schemaDefinitionsElectra
+            .getExecutionProofSchema()
+            .create(
+                dataStructureUtil.randomBytes(5),
+                99,
+                schemaDefinitionsElectra
+                    .getExecutionProofSchema()
+                    .getPublicInputSchema()
+                    .create(dataStructureUtil.randomBytes32()));
+    final UInt64 epoch = spec.computeEpochAtSlot(state.getSlot());
+    final Bytes signingRoot =
+        signingRootUtil.signingRootForSignExecutionProof(
+            executionProof, epoch, state.getForkInfo());
+    final BLSSignature signature = BLS.sign(proverKeyPair.getSecretKey(), signingRoot);
+    final SignedExecutionProof proof =
+        schemaDefinitionsElectra
+            .getSignedExecutionProofSchema()
+            .create(executionProof, UInt64.valueOf(proverValidatorIndex), signature);
+
+    assertThat(validator.validate(proof)).isCompletedWithValue(InternalValidationResult.IGNORE);
+  }
 }

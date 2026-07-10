@@ -27,6 +27,7 @@ import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.SpecVersion;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.ProofType;
 import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.state.beaconstate.BeaconState;
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
@@ -101,6 +102,13 @@ public class ExecutionProofGossipValidator {
     if (executionProof.getProofData().size() == 0) {
       return SafeFuture.completedFuture(
           InternalValidationResult.reject("execution proof has empty proof_data"));
+    }
+
+    if (ProofType.fromValue(executionProof.getProofType()).isEmpty()) {
+      LOG.trace(
+          "Received execution proof with unrecognized proof_type {}",
+          executionProof.getProofType());
+      return SafeFuture.completedFuture(InternalValidationResult.IGNORE);
     }
 
     final Bytes32 newPayloadRequestRoot =

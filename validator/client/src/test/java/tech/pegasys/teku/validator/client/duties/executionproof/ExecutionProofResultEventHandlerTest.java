@@ -17,48 +17,75 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.launchdarkly.eventsource.MessageEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.tuweni.bytes.Bytes;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Test;
-import tech.pegasys.teku.infrastructure.async.SafeFuture;
 
 class ExecutionProofResultEventHandlerTest {
 
-  private final SafeFuture<Bytes> result = new SafeFuture<>();
+  private final Bytes32 expectedRoot = Bytes32.fromHexStringLenient("0x01");
+  private final AtomicBoolean proofCompleted = new AtomicBoolean(false);
+  private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final AtomicBoolean eventProcessed = new AtomicBoolean(false);
+
   private final ExecutionProofResultEventHandler handler =
-      new ExecutionProofResultEventHandler(result, () -> eventProcessed.set(true));
+      new ExecutionProofResultEventHandler(
+          expectedRoot,
+          () -> proofCompleted.set(true),
+          failure::set,
+          () -> eventProcessed.set(true));
 
   @Test
-  void onMessage_completesResultWithParsedProofData() {
-    handler.onMessage("message", messageEvent("{\"proof_data\": \"0x0123\"}"));
+  void onMessage_proofComplete_forExpectedRootTriggersCallback() {
+    handler.onMessage(
+        "proof_complete", messageEvent("{\"new_payload_request_root\": \"" + expectedRoot + "\"}"));
 
-    assertThat(result).isCompletedWithValue(Bytes.fromHexString("0x0123"));
+    assertThat(proofCompleted).isTrue();
+    assertThat(eventProcessed).isTrue();
+    assertThat(failure).hasValue(null);
+  }
+
+  @Test
+  void onMessage_proofComplete_forDifferentRootIsIgnored() {
+    final Bytes32 otherRoot = Bytes32.fromHexStringLenient("0x02");
+    handler.onMessage(
+        "proof_complete", messageEvent("{\"new_payload_request_root\": \"" + otherRoot + "\"}"));
+
+    assertThat(proofCompleted).isFalse();
+    assertThat(eventProcessed).isFalse();
+  }
+
+  @Test
+  void onMessage_proofFailure_forExpectedRootCompletesExceptionally() {
+    handler.onMessage(
+        "proof_failure",
+        messageEvent(
+            "{\"new_payload_request_root\": \""
+                + expectedRoot
+                + "\", \"reason\": \"ProvingError\", \"error\": \"boom\"}"));
+
+    assertThat(proofCompleted).isFalse();
+    assertThat(failure.get()).isNotNull();
+    assertThat(failure.get().getMessage()).contains("ProvingError").contains("boom");
     assertThat(eventProcessed).isTrue();
   }
 
   @Test
-  void onMessage_completesExceptionallyOnMalformedJson() {
-    handler.onMessage("message", messageEvent("not json"));
+  void onMessage_unrelatedEventNameIsIgnored() {
+    handler.onMessage("some_other_event", messageEvent("{}"));
 
-    assertThat(result.isCompletedExceptionally()).isTrue();
-    assertThat(eventProcessed).isTrue();
+    assertThat(proofCompleted).isFalse();
+    assertThat(failure).hasValue(null);
+    assertThat(eventProcessed).isFalse();
   }
 
   @Test
-  void onMessage_completesExceptionallyWhenProofDataIsNotValidHex() {
-    handler.onMessage("message", messageEvent("{\"proof_data\": \"not hex\"}"));
-
-    assertThat(result.isCompletedExceptionally()).isTrue();
-    assertThat(eventProcessed).isTrue();
-  }
-
-  @Test
-  void onError_completesResultExceptionally() {
+  void onError_completesExceptionallyAndClosesTheStream() {
     final RuntimeException error = new RuntimeException("connection reset");
 
     handler.onError(error);
 
-    assertThat(result).isCompletedExceptionally();
+    assertThat(failure).hasValue(error);
     assertThat(eventProcessed).isTrue();
   }
 

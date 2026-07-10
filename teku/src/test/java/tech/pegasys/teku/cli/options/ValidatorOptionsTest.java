@@ -286,4 +286,20 @@ public class ValidatorOptionsTest extends AbstractBeaconNodeCommandTest {
     assertThat(config.isExecutionProofProverEnabled()).isTrue();
     assertThat(config.getExecutionProofProverEndpoint()).contains("http://prover.example.com");
   }
+
+  @Test
+  public void executionProofType_isEmptyByDefault() {
+    final ValidatorConfig config =
+        getTekuConfigurationFromArguments().validatorClient().getValidatorConfig();
+    assertThat(config.getExecutionProofType()).isEmpty();
+  }
+
+  @Test
+  public void executionProofType_canBeSet() {
+    final ValidatorConfig config =
+        getTekuConfigurationFromArguments("--Xexecution-proof-type=reth-zisk")
+            .validatorClient()
+            .getValidatorConfig();
+    assertThat(config.getExecutionProofType()).contains("reth-zisk");
+  }
 }

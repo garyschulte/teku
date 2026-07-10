@@ -15,7 +15,9 @@ package tech.pegasys.teku.spec.datastructures.execution;
 
 import java.util.List;
 import java.util.Optional;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import tech.pegasys.teku.infrastructure.ssz.SszData;
 import tech.pegasys.teku.infrastructure.ssz.SszList;
 import tech.pegasys.teku.infrastructure.ssz.containers.Container1;
 import tech.pegasys.teku.infrastructure.ssz.containers.Container3;
@@ -60,9 +62,28 @@ public final class NewPayloadRequestHasher {
       final NewPayloadRequest request,
       final Optional<ExecutionRequests> executionRequests,
       final int maxVersionedHashesPerBlock) {
+    return buildContainer(request, executionRequests, maxVersionedHashesPerBlock).hashTreeRoot();
+  }
+
+  /**
+   * Serializes the same throwaway per-fork container {@link #hashTreeRoot} builds, for sending to
+   * an external prover service that needs the actual {@code NewPayloadRequest} bytes (not just its
+   * root) - see {@code ExecutionProofProverClient}.
+   */
+  public static Bytes sszSerialize(
+      final NewPayloadRequest request,
+      final Optional<ExecutionRequests> executionRequests,
+      final int maxVersionedHashesPerBlock) {
+    return buildContainer(request, executionRequests, maxVersionedHashesPerBlock).sszSerialize();
+  }
+
+  private static SszData buildContainer(
+      final NewPayloadRequest request,
+      final Optional<ExecutionRequests> executionRequests,
+      final int maxVersionedHashesPerBlock) {
     final ExecutionPayload executionPayload = request.getExecutionPayload();
     if (request.getVersionedHashes().isEmpty()) {
-      return hashBellatrix(executionPayload);
+      return buildBellatrix(executionPayload);
     }
     final List<VersionedHash> versionedHashes = request.getVersionedHashes().orElseThrow();
     final Bytes32 parentBeaconBlockRoot =
@@ -73,10 +94,10 @@ public final class NewPayloadRequestHasher {
                     new IllegalArgumentException(
                         "parentBeaconBlockRoot must be present when versionedHashes are present"));
     if (executionRequests.isEmpty()) {
-      return hashDeneb(
+      return buildDeneb(
           executionPayload, versionedHashes, parentBeaconBlockRoot, maxVersionedHashesPerBlock);
     }
-    return hashElectra(
+    return buildElectra(
         executionPayload,
         versionedHashes,
         parentBeaconBlockRoot,
@@ -84,26 +105,22 @@ public final class NewPayloadRequestHasher {
         maxVersionedHashesPerBlock);
   }
 
-  private static Bytes32 hashBellatrix(final ExecutionPayload executionPayload) {
-    return new BellatrixSchema(executionPayloadSchema(executionPayload))
-        .create(executionPayload)
-        .hashTreeRoot();
+  private static SszData buildBellatrix(final ExecutionPayload executionPayload) {
+    return new BellatrixSchema(executionPayloadSchema(executionPayload)).create(executionPayload);
   }
 
-  private static Bytes32 hashDeneb(
+  private static SszData buildDeneb(
       final ExecutionPayload executionPayload,
       final List<VersionedHash> versionedHashes,
       final Bytes32 parentBeaconBlockRoot,
       final int maxVersionedHashesPerBlock) {
     final DenebSchema schema =
         new DenebSchema(executionPayloadSchema(executionPayload), maxVersionedHashesPerBlock);
-    return schema
-        .create(
-            executionPayload, versionedHashesList(versionedHashes, schema), parentBeaconBlockRoot)
-        .hashTreeRoot();
+    return schema.create(
+        executionPayload, versionedHashesList(versionedHashes, schema), parentBeaconBlockRoot);
   }
 
-  private static Bytes32 hashElectra(
+  private static SszData buildElectra(
       final ExecutionPayload executionPayload,
       final List<VersionedHash> versionedHashes,
       final Bytes32 parentBeaconBlockRoot,
@@ -114,13 +131,11 @@ public final class NewPayloadRequestHasher {
             executionPayloadSchema(executionPayload),
             maxVersionedHashesPerBlock,
             executionRequests.getSchema());
-    return schema
-        .create(
-            executionPayload,
-            versionedHashesList(versionedHashes, schema),
-            parentBeaconBlockRoot,
-            executionRequests)
-        .hashTreeRoot();
+    return schema.create(
+        executionPayload,
+        versionedHashesList(versionedHashes, schema),
+        parentBeaconBlockRoot,
+        executionRequests);
   }
 
   @SuppressWarnings("unchecked")
