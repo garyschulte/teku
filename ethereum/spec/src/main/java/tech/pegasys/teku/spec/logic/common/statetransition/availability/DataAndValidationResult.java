@@ -85,7 +85,7 @@ public record DataAndValidationResult<Data>(
   }
 
   public boolean isSuccess() {
-    return isValid() || isNotRequired();
+    return isValid() || isNotRequired() || isOptimistic();
   }
 
   public boolean isOptimistic() {
