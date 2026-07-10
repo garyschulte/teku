@@ -25,6 +25,16 @@ Monitoring/Debugging
 Prometheus/Grafana and [rpc-snooper](https://github.com/ethpandaops/rpc-snooper) have been enabled
 to allow for an easier monitoring/debugging of the network/nodes.
 
+EIP-8025 (Optional Execution Proofs) Interop Devnet
+----------
+
+[eip8025-devnet.yaml](./eip8025-devnet.yaml) runs Teku alongside `eth-act/lighthouse`'s
+`optional-proofs` branch, both pointed at a shared `zkboost` prover/verifier service - the same
+devnet shape as `ethereum-package`'s own `.github/tests/zkboost.yaml`, with a Teku participant added
+using this branch's `--Xexecution-proof-*` flags. See the comments at the top of that file for the
+exact success criteria and how to run it; it needs a Teku image built from this branch
+(`./gradlew distDocker`) since the flags it exercises aren't in any released image yet.
+
 
 
 
