@@ -52,6 +52,7 @@ import tech.pegasys.teku.spec.datastructures.builder.ValidatorRegistration;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadEnvelope;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.PayloadAttestationData;
+import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
 import tech.pegasys.teku.spec.datastructures.operations.AggregateAndProof;
 import tech.pegasys.teku.spec.datastructures.operations.AttestationData;
 import tech.pegasys.teku.spec.datastructures.operations.VoluntaryExit;
@@ -292,6 +293,14 @@ public class ExternalSigner implements Signer {
   @Override
   public SafeFuture<BLSSignature> signPayloadAttestationData(
       final PayloadAttestationData payloadAttestationData, final ForkInfo forkInfo) {
+    return SafeFuture.failedFuture(new UnsupportedOperationException("Not yet implemented"));
+  }
+
+  // EIP-8025 execution proof signing has no remote-signing-api SignType yet; local-key signing
+  // only for now (see EIP-8025 gap-analysis M3/M8 notes - out of scope for this pass).
+  @Override
+  public SafeFuture<BLSSignature> signExecutionProof(
+      final ExecutionProof executionProof, final UInt64 epoch, final ForkInfo forkInfo) {
     return SafeFuture.failedFuture(new UnsupportedOperationException("Not yet implemented"));
   }
 

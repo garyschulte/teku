@@ -26,6 +26,8 @@ import tech.pegasys.teku.spec.constants.Domain;
 import tech.pegasys.teku.spec.datastructures.blocks.BeaconBlockHeader;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadBid;
+import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.operations.BlsToExecutionChange;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.SignedBlsToExecutionChange;
@@ -167,5 +169,37 @@ public class OperationSignatureVerifier {
             Domain.BEACON_BUILDER,
             miscHelpers.computeEpochAtSlot(state.getSlot()));
     return miscHelpers.computeSigningRoot(bid, domain);
+  }
+
+  /**
+   * Verifies an EIP-8025 {@link SignedExecutionProof}'s BLS signature. Unlike {@code
+   * ExecutionPayloadBid} (a fixed builder role), the "prover" is any active validator identified by
+   * {@code validator_index} - this does NOT verify that the prover is active; callers (gossip
+   * validation) must check that separately, mirroring the spec's {@code process_execution_proof}
+   * which asserts prover-is-active-validator as a distinct check from signature validity.
+   */
+  public boolean verifyExecutionProofSignature(
+      final BeaconState state,
+      final SignedExecutionProof signedExecutionProof,
+      final BLSSignatureVerifier signatureVerifier) {
+    final Optional<BLSPublicKey> maybePublicKey =
+        beaconStateAccessors.getValidatorPubKey(state, signedExecutionProof.getValidatorIndex());
+    if (maybePublicKey.isEmpty()) {
+      return false;
+    }
+    final Bytes signingRoot =
+        calculateExecutionProofSigningRoot(state, signedExecutionProof.getMessage());
+    return signatureVerifier.verify(
+        maybePublicKey.get(), signingRoot, signedExecutionProof.getSignature());
+  }
+
+  private Bytes calculateExecutionProofSigningRoot(
+      final BeaconState state, final ExecutionProof executionProof) {
+    final Bytes32 domain =
+        beaconStateAccessors.getDomain(
+            state.getForkInfo(),
+            Domain.EXECUTION_PROOF,
+            miscHelpers.computeEpochAtSlot(state.getSlot()));
+    return miscHelpers.computeSigningRoot(executionProof, domain);
   }
 }

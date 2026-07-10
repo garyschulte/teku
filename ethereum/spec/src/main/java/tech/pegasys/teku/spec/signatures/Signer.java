@@ -24,6 +24,7 @@ import tech.pegasys.teku.spec.datastructures.builder.ValidatorRegistration;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadEnvelope;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.PayloadAttestationData;
+import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
 import tech.pegasys.teku.spec.datastructures.operations.AggregateAndProof;
 import tech.pegasys.teku.spec.datastructures.operations.AttestationData;
 import tech.pegasys.teku.spec.datastructures.operations.VoluntaryExit;
@@ -66,6 +67,15 @@ public interface Signer {
 
   SafeFuture<BLSSignature> signPayloadAttestationData(
       PayloadAttestationData payloadAttestationData, ForkInfo forkInfo);
+
+  /**
+   * Signs an EIP-8025 {@link ExecutionProof} as its "prover". {@code ExecutionProof} carries no
+   * slot/epoch of its own, so (mirroring {@link #createRandaoReveal}) the epoch used to resolve the
+   * signing domain/fork version must be supplied by the caller - the current head state's epoch at
+   * validation/generation time.
+   */
+  SafeFuture<BLSSignature> signExecutionProof(
+      ExecutionProof executionProof, UInt64 epoch, ForkInfo forkInfo);
 
   default boolean isLocal() {
     return getSigningServiceUrl().isEmpty();
