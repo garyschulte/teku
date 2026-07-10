@@ -15,10 +15,12 @@ package tech.pegasys.teku.statetransition.validation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static tech.pegasys.teku.spec.config.SpecConfig.FAR_FUTURE_EPOCH;
 
+import java.time.Duration;
 import java.util.Optional;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +30,7 @@ import tech.pegasys.teku.bls.BLSKeyPair;
 import tech.pegasys.teku.bls.BLSSignature;
 import tech.pegasys.teku.bls.BLSTestUtil;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
+import tech.pegasys.teku.infrastructure.collections.LimitedSet;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.SpecMilestone;
@@ -41,6 +44,7 @@ import tech.pegasys.teku.spec.schemas.SchemaDefinitionsElectra;
 import tech.pegasys.teku.spec.signatures.SigningRootUtil;
 import tech.pegasys.teku.spec.util.DataStructureUtil;
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
+import tech.pegasys.teku.statetransition.executionproofs.verifier.ExecutionProofVerifierClient;
 import tech.pegasys.teku.storage.client.RecentChainData;
 
 class ExecutionProofGossipValidatorTest {
@@ -56,6 +60,8 @@ class ExecutionProofGossipValidatorTest {
 
   private final RecentChainData recentChainData = mock(RecentChainData.class);
   private final ExecutionProofManager executionProofManager = mock(ExecutionProofManager.class);
+  private final ExecutionProofVerifierClient executionProofVerifierClient =
+      mock(ExecutionProofVerifierClient.class);
 
   private BeaconState state;
   private ExecutionProofGossipValidator validator;
@@ -78,8 +84,17 @@ class ExecutionProofGossipValidatorTest {
             .build();
     when(recentChainData.getBestState()).thenReturn(Optional.of(SafeFuture.completedFuture(state)));
     when(executionProofManager.isKnownNewPayloadRequestRoot(any())).thenReturn(true);
+    when(executionProofVerifierClient.verify(any(), anyInt(), any()))
+        .thenReturn(SafeFuture.completedFuture(true));
 
-    validator = ExecutionProofGossipValidator.create(spec, recentChainData);
+    // short timeout so the timeout-fallback tests don't need to wait out a real 3s timeout
+    validator =
+        new ExecutionProofGossipValidator(
+            spec,
+            recentChainData,
+            executionProofVerifierClient,
+            Duration.ofMillis(100),
+            LimitedSet.createSynchronized(64));
     validator.setExecutionProofManager(executionProofManager);
   }
 
@@ -125,6 +140,37 @@ class ExecutionProofGossipValidatorTest {
         signedProof(proverKeyPair, UInt64.valueOf(proverValidatorIndex));
 
     assertThat(validator.validate(proof)).isCompletedWithValue(InternalValidationResult.IGNORE);
+  }
+
+  @Test
+  void rejectsAProofFailingExternalVerification() {
+    when(executionProofVerifierClient.verify(any(), anyInt(), any()))
+        .thenReturn(SafeFuture.completedFuture(false));
+    final SignedExecutionProof proof =
+        signedProof(proverKeyPair, UInt64.valueOf(proverValidatorIndex));
+
+    assertThat(validator.validate(proof).join().code()).isEqualTo(ValidationResultCode.REJECT);
+  }
+
+  @Test
+  void provisionallyAcceptsWhenVerifierTimesOut() {
+    when(executionProofVerifierClient.verify(any(), anyInt(), any()))
+        .thenReturn(new SafeFuture<>()); // never completes
+    final SignedExecutionProof proof =
+        signedProof(proverKeyPair, UInt64.valueOf(proverValidatorIndex));
+
+    // blocks until the (short, test-configured) verifier timeout fires and recovers to ACCEPT
+    assertThat(validator.validate(proof).join()).isEqualTo(InternalValidationResult.ACCEPT);
+  }
+
+  @Test
+  void provisionallyAcceptsWhenVerifierFails() {
+    when(executionProofVerifierClient.verify(any(), anyInt(), any()))
+        .thenReturn(SafeFuture.failedFuture(new RuntimeException("connection refused")));
+    final SignedExecutionProof proof =
+        signedProof(proverKeyPair, UInt64.valueOf(proverValidatorIndex));
+
+    assertThat(validator.validate(proof).join()).isEqualTo(InternalValidationResult.ACCEPT);
   }
 
   @Test

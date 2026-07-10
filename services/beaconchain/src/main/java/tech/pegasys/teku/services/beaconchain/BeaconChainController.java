@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
+import okhttp3.OkHttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tuweni.bytes.Bytes;
@@ -204,6 +205,8 @@ import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofGenerator
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofGeneratorImpl;
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManagerImpl;
+import tech.pegasys.teku.statetransition.executionproofs.verifier.ExecutionProofVerifierClient;
+import tech.pegasys.teku.statetransition.executionproofs.verifier.RestExecutionProofVerifierClient;
 import tech.pegasys.teku.statetransition.forkchoice.ExecutionProofsAvailabilityCheckerFactory;
 import tech.pegasys.teku.statetransition.forkchoice.ForkChoice;
 import tech.pegasys.teku.statetransition.forkchoice.ForkChoiceNotifier;
@@ -714,8 +717,14 @@ public class BeaconChainController extends Service implements BeaconChainControl
     if (zkConfig.statelessValidationEnabled()) {
       final ExecutionProofGossipChannel executionProofGossipChannel =
           eventChannels.getPublisher(ExecutionProofGossipChannel.class, networkAsyncRunner);
+      final ExecutionProofVerifierClient executionProofVerifierClient =
+          zkConfig
+              .executionProofVerifierEndpoint()
+              .<ExecutionProofVerifierClient>map(
+                  endpoint -> new RestExecutionProofVerifierClient(new OkHttpClient(), endpoint))
+              .orElse(ExecutionProofVerifierClient.NOOP);
       final ExecutionProofGossipValidator executionProofGossipValidator =
-          ExecutionProofGossipValidator.create(spec, recentChainData);
+          ExecutionProofGossipValidator.create(spec, recentChainData, executionProofVerifierClient);
       final SpecVersion specVersionElectra = spec.forMilestone(SpecMilestone.ELECTRA);
       final SchemaDefinitionsElectra schemaDefinitionsElectra =
           SchemaDefinitionsElectra.required(specVersionElectra.getSchemaDefinitions());

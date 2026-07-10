@@ -33,6 +33,7 @@ dependencies {
   implementation project(':storage:api')
   implementation project(':beacon:sync')
   implementation project(':validator:api')
+  implementation 'com.squareup.okhttp3:okhttp'
   implementation project(':validator:client')
 
   testImplementation testFixtures(project(':storage'))

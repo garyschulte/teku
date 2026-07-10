@@ -14,6 +14,7 @@
 package tech.pegasys.teku.cli.options;
 
 import java.time.Duration;
+import java.util.Optional;
 import picocli.CommandLine;
 import tech.pegasys.teku.config.TekuConfiguration;
 import tech.pegasys.teku.services.zkchain.ZkChainConfiguration;
@@ -58,6 +59,17 @@ public class ZkChainOptions {
   private long statelessProofGenerationDelay =
       ZkChainConfiguration.DEFAULT_PROOF_GENERATION_DELAY.toMillis();
 
+  @CommandLine.Option(
+      hidden = true,
+      names = {"--Xexecution-proof-verifier-endpoint"},
+      paramLabel = "<ENDPOINT>",
+      description =
+          "URL of an external EIP-8025 proof verifier service (e.g. zkboost) used to verify"
+              + " incoming execution proofs. If not set, proofs are not cryptographically"
+              + " verified.",
+      arity = "1")
+  private String executionProofVerifierEndpoint;
+
   public void configure(final TekuConfiguration.Builder builder) {
     builder.zkchain(
         zkChainConfiguration ->
@@ -65,6 +77,8 @@ public class ZkChainOptions {
                 .statelessValidationEnabled(statelessValidationEnabled)
                 .generateExecutionProofsEnabled(generateExecutionProofsEnabled)
                 .statelessMinProofsRequired(statelessMinProofsRequired)
-                .proofDelayDurationInMs(Duration.ofMillis(statelessProofGenerationDelay)));
+                .proofDelayDurationInMs(Duration.ofMillis(statelessProofGenerationDelay))
+                .executionProofVerifierEndpoint(
+                    Optional.ofNullable(executionProofVerifierEndpoint)));
   }
 }

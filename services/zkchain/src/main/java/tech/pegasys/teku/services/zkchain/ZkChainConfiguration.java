@@ -14,12 +14,14 @@
 package tech.pegasys.teku.services.zkchain;
 
 import java.time.Duration;
+import java.util.Optional;
 
 public record ZkChainConfiguration(
     boolean statelessValidationEnabled,
     boolean generateExecutionProofsEnabled,
     int statelessMinProofsRequired,
-    Duration proofDelayDurationInMs) {
+    Duration proofDelayDurationInMs,
+    Optional<String> executionProofVerifierEndpoint) {
 
   public static final boolean DEFAULT_STATELESS_VALIDATION_ENABLED = false;
   public static final boolean DEFAULT_GENERATE_EXECUTION_PROOFS_ENABLED = false;
@@ -36,6 +38,7 @@ public record ZkChainConfiguration(
     private boolean generateExecutionProofsEnabled = DEFAULT_GENERATE_EXECUTION_PROOFS_ENABLED;
     private int statelessMinProofsRequired = DEFAULT_STATELESS_MIN_PROOFS_REQUIRED;
     private Duration proofDelayDurationInMs = DEFAULT_PROOF_GENERATION_DELAY;
+    private Optional<String> executionProofVerifierEndpoint = Optional.empty();
 
     public Builder() {}
 
@@ -62,6 +65,12 @@ public record ZkChainConfiguration(
       return this;
     }
 
+    public Builder executionProofVerifierEndpoint(
+        final Optional<String> executionProofVerifierEndpoint) {
+      this.executionProofVerifierEndpoint = executionProofVerifierEndpoint;
+      return this;
+    }
+
     public ZkChainConfiguration build() {
       if (generateExecutionProofsEnabled && !statelessValidationEnabled) {
         throw new IllegalStateException(
@@ -71,7 +80,8 @@ public record ZkChainConfiguration(
           statelessValidationEnabled,
           generateExecutionProofsEnabled,
           statelessMinProofsRequired,
-          proofDelayDurationInMs);
+          proofDelayDurationInMs,
+          executionProofVerifierEndpoint);
     }
   }
 }

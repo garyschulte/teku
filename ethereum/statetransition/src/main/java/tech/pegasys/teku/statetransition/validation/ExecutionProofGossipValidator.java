@@ -13,10 +13,12 @@
 
 package tech.pegasys.teku.statetransition.validation;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import tech.pegasys.teku.bls.BLSSignatureVerifier;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
@@ -28,21 +30,26 @@ import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
 import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.state.beaconstate.BeaconState;
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
+import tech.pegasys.teku.statetransition.executionproofs.verifier.ExecutionProofVerifierClient;
 import tech.pegasys.teku.storage.client.RecentChainData;
 
 /**
  * Gossip validation for the single global {@code execution_proof} topic (EIP-8025). REJECT covers
  * structurally/cryptographically impossible input (empty proof, unknown/inactive prover, bad
- * signature); IGNORE covers "not our fault, might be valid later" cases (unknown payload root -
- * most likely a locally-lagging node, dedup). REJECT-on-failed-external-verification is deferred to
- * M6, once a real verifier client exists - until then, a structurally/cryptographically valid proof
- * is provisionally ACCEPTed.
+ * signature, external-verification-fail); IGNORE covers "not our fault, might be valid later" cases
+ * (unknown payload root - most likely a locally-lagging node, dedup). The external verifier call is
+ * bounded by a short timeout and, on timeout/failure, is treated as "not yet verified"
+ * (provisionally ACCEPTed) rather than REJECTed - matching the optimistic philosophy of this entire
+ * feature during its optional (non-mandatory) phase.
  */
 public class ExecutionProofGossipValidator {
   private static final Logger LOG = LogManager.getLogger();
+  private static final Duration VERIFIER_TIMEOUT = Duration.ofSeconds(3);
 
   private final Spec spec;
   private final RecentChainData recentChainData;
+  private final ExecutionProofVerifierClient executionProofVerifierClient;
+  private final Duration verifierTimeout;
   private final Set<DedupKey> receivedValidExecutionProofKeys;
 
   // ExecutionProofManagerImpl needs this validator in its own constructor, so the manager itself
@@ -53,9 +60,18 @@ public class ExecutionProofGossipValidator {
 
   public static ExecutionProofGossipValidator create(
       final Spec spec, final RecentChainData recentChainData) {
+    return create(spec, recentChainData, ExecutionProofVerifierClient.NOOP);
+  }
+
+  public static ExecutionProofGossipValidator create(
+      final Spec spec,
+      final RecentChainData recentChainData,
+      final ExecutionProofVerifierClient executionProofVerifierClient) {
     return new ExecutionProofGossipValidator(
         spec,
         recentChainData,
+        executionProofVerifierClient,
+        VERIFIER_TIMEOUT,
         // 4 proof types per payload (spec's MAX_EXECUTION_PROOFS_PER_PAYLOAD) * 2 epochs * 32
         // slots per epoch based on mainnet, for now
         LimitedSet.createSynchronized(4 * 64));
@@ -64,9 +80,13 @@ public class ExecutionProofGossipValidator {
   ExecutionProofGossipValidator(
       final Spec spec,
       final RecentChainData recentChainData,
+      final ExecutionProofVerifierClient executionProofVerifierClient,
+      final Duration verifierTimeout,
       final Set<DedupKey> receivedValidExecutionProofKeys) {
     this.spec = spec;
     this.recentChainData = recentChainData;
+    this.executionProofVerifierClient = executionProofVerifierClient;
+    this.verifierTimeout = verifierTimeout;
     this.receivedValidExecutionProofKeys = receivedValidExecutionProofKeys;
   }
 
@@ -105,17 +125,18 @@ public class ExecutionProofGossipValidator {
 
     return maybeState
         .get()
-        .thenApply(state -> validateWithState(state, signedExecutionProof, dedupKey));
+        .thenCompose(state -> validateWithState(state, signedExecutionProof, dedupKey));
   }
 
-  private InternalValidationResult validateWithState(
+  private SafeFuture<InternalValidationResult> validateWithState(
       final BeaconState state,
       final SignedExecutionProof signedExecutionProof,
       final DedupKey dedupKey) {
     final UInt64 validatorIndex = signedExecutionProof.getValidatorIndex();
     if (validatorIndex.isGreaterThanOrEqualTo(UInt64.valueOf(state.getValidators().size()))) {
-      return InternalValidationResult.reject(
-          "execution proof references unknown validator index %s", validatorIndex);
+      return SafeFuture.completedFuture(
+          InternalValidationResult.reject(
+              "execution proof references unknown validator index %s", validatorIndex));
     }
 
     final SpecVersion specVersion = spec.atSlot(state.getSlot());
@@ -124,24 +145,46 @@ public class ExecutionProofGossipValidator {
         .beaconStateAccessors()
         .getActiveValidatorIndices(state, currentEpoch)
         .contains(validatorIndex.intValue())) {
-      return InternalValidationResult.reject(
-          "execution proof prover %s is not an active validator", validatorIndex);
+      return SafeFuture.completedFuture(
+          InternalValidationResult.reject(
+              "execution proof prover %s is not an active validator", validatorIndex));
     }
 
     if (!specVersion
         .operationSignatureVerifier()
         .verifyExecutionProofSignature(state, signedExecutionProof, BLSSignatureVerifier.SIMPLE)) {
-      return InternalValidationResult.reject("execution proof signature is invalid");
+      return SafeFuture.completedFuture(
+          InternalValidationResult.reject("execution proof signature is invalid"));
     }
 
-    // TODO(M6): check the external verifier here and REJECT on failure; until then, a
-    // structurally/cryptographically valid proof is provisionally accepted.
-    receivedValidExecutionProofKeys.add(dedupKey);
-    LOG.trace(
-        "Received and validated execution proof for new payload request root {}, proof type {}",
-        dedupKey.newPayloadRequestRoot(),
-        dedupKey.proofType());
-    return InternalValidationResult.ACCEPT;
+    final ExecutionProof executionProof = signedExecutionProof.getMessage();
+    final Bytes proofData = executionProof.getProofData().getBytes();
+    return executionProofVerifierClient
+        .verify(dedupKey.newPayloadRequestRoot(), dedupKey.proofType(), proofData)
+        .orTimeout(verifierTimeout)
+        .exceptionally(
+            error -> {
+              LOG.debug(
+                  "Execution proof verifier did not respond in time or failed for {}; "
+                      + "provisionally accepting pending later reconciliation",
+                  dedupKey,
+                  error);
+              return true;
+            })
+        .thenApply(
+            verified -> {
+              if (!verified) {
+                return InternalValidationResult.reject(
+                    "execution proof failed external verification");
+              }
+              receivedValidExecutionProofKeys.add(dedupKey);
+              LOG.trace(
+                  "Received and validated execution proof for new payload request root {}, proof"
+                      + " type {}",
+                  dedupKey.newPayloadRequestRoot(),
+                  dedupKey.proofType());
+              return InternalValidationResult.ACCEPT;
+            });
   }
 
   /** Gossip dedup key per the spec: {@code (new_payload_request_root, proof_type)}. */
