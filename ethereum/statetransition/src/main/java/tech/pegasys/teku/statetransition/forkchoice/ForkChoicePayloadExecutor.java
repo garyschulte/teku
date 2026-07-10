@@ -16,15 +16,20 @@ package tech.pegasys.teku.statetransition.forkchoice;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.tuweni.bytes.Bytes32;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 import tech.pegasys.teku.spec.Spec;
+import tech.pegasys.teku.spec.config.SpecConfigDeneb;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayload;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadHeader;
 import tech.pegasys.teku.spec.datastructures.execution.NewPayloadRequest;
+import tech.pegasys.teku.spec.datastructures.execution.NewPayloadRequestHasher;
+import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ExecutionRequests;
 import tech.pegasys.teku.spec.executionlayer.ExecutionLayerChannel;
 import tech.pegasys.teku.spec.executionlayer.PayloadStatus;
 import tech.pegasys.teku.spec.logic.versions.bellatrix.block.OptimisticExecutionPayloadExecutor;
+import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
 import tech.pegasys.teku.storage.client.RecentChainData;
 
 class ForkChoicePayloadExecutor implements OptimisticExecutionPayloadExecutor {
@@ -33,24 +38,41 @@ class ForkChoicePayloadExecutor implements OptimisticExecutionPayloadExecutor {
   private final ExecutionLayerChannel executionLayer;
   private final SignedBeaconBlock block;
   private final MergeTransitionBlockValidator transitionBlockValidator;
+  private final ExecutionProofManager executionProofManager;
+  private final int maxVersionedHashesPerBlock;
   private Optional<SafeFuture<PayloadValidationResult>> result = Optional.empty();
 
   ForkChoicePayloadExecutor(
       final SignedBeaconBlock block,
       final ExecutionLayerChannel executionLayer,
-      final MergeTransitionBlockValidator transitionBlockValidator) {
+      final MergeTransitionBlockValidator transitionBlockValidator,
+      final ExecutionProofManager executionProofManager,
+      final int maxVersionedHashesPerBlock) {
     this.block = block;
     this.transitionBlockValidator = transitionBlockValidator;
     this.executionLayer = executionLayer;
+    this.executionProofManager = executionProofManager;
+    this.maxVersionedHashesPerBlock = maxVersionedHashesPerBlock;
   }
 
   public static ForkChoicePayloadExecutor create(
       final Spec spec,
       final RecentChainData recentChainData,
       final SignedBeaconBlock block,
-      final ExecutionLayerChannel executionLayer) {
+      final ExecutionLayerChannel executionLayer,
+      final ExecutionProofManager executionProofManager) {
+    final int maxVersionedHashesPerBlock =
+        spec.atSlot(block.getSlot())
+            .getConfig()
+            .toVersionDeneb()
+            .map(SpecConfigDeneb::getMaxBlobCommitmentsPerBlock)
+            .orElse(0);
     return new ForkChoicePayloadExecutor(
-        block, executionLayer, new MergeTransitionBlockValidator(spec, recentChainData));
+        block,
+        executionLayer,
+        new MergeTransitionBlockValidator(spec, recentChainData),
+        executionProofManager,
+        maxVersionedHashesPerBlock);
   }
 
   public SafeFuture<PayloadValidationResult> getExecutionResult() {
@@ -69,6 +91,7 @@ class ForkChoicePayloadExecutor implements OptimisticExecutionPayloadExecutor {
       // because it checks the parentRoot matches
       return true;
     }
+    recordNewPayloadRequestRoot(payloadToExecute);
     result =
         Optional.of(
             executionLayer
@@ -89,5 +112,20 @@ class ForkChoicePayloadExecutor implements OptimisticExecutionPayloadExecutor {
                     }));
 
     return true;
+  }
+
+  private void recordNewPayloadRequestRoot(final NewPayloadRequest payloadToExecute) {
+    try {
+      final Optional<ExecutionRequests> executionRequests =
+          block
+              .getBeaconBlock()
+              .flatMap(beaconBlock -> beaconBlock.getBody().getOptionalExecutionRequests());
+      final Bytes32 newPayloadRequestRoot =
+          NewPayloadRequestHasher.hashTreeRoot(
+              payloadToExecute, executionRequests, maxVersionedHashesPerBlock);
+      executionProofManager.recordNewPayloadRequestRoot(block.getRoot(), newPayloadRequestRoot);
+    } catch (final RuntimeException e) {
+      LOG.debug("Failed to compute new_payload_request_root for block {}", block.getRoot(), e);
+    }
   }
 }

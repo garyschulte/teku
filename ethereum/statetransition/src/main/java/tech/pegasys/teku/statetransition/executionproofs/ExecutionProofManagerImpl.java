@@ -28,6 +28,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.tuweni.bytes.Bytes32;
 import tech.pegasys.teku.infrastructure.async.AsyncRunner;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
+import tech.pegasys.teku.infrastructure.collections.LimitedMap;
 import tech.pegasys.teku.infrastructure.subscribers.Subscribers;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.Spec;
@@ -49,6 +50,12 @@ public class ExecutionProofManagerImpl implements ExecutionProofManager {
   private final Map<Bytes32, Set<ExecutionProof>> validatedExecutionProofsByBlockRoot =
       new ConcurrentHashMap<>();
   private final Consumer<ExecutionProof> onCreatedProof;
+
+  // TODO(M4/M7): keyed by block root as a bridge until gossip validation/availability-checking
+  // are reworked to key everything by new_payload_request_root directly. 2 epochs * 32 slots
+  // worth of blocks, matching the existing proof-retention window sizing elsewhere in this class.
+  private final Map<Bytes32, Bytes32> newPayloadRequestRootsByBlockRoot =
+      LimitedMap.createSynchronizedLRU(64);
 
   private static final Logger LOG = LogManager.getLogger();
   private final int attemptsToGetProof = 3;
@@ -218,5 +225,16 @@ public class ExecutionProofManagerImpl implements ExecutionProofManager {
                 LOG.error("Failed to generate execution proofs for block {}", blockRoot, error));
 
     return SafeFuture.completedFuture(null);
+  }
+
+  @Override
+  public void recordNewPayloadRequestRoot(
+      final Bytes32 blockRoot, final Bytes32 newPayloadRequestRoot) {
+    newPayloadRequestRootsByBlockRoot.put(blockRoot, newPayloadRequestRoot);
+  }
+
+  @Override
+  public Optional<Bytes32> getNewPayloadRequestRoot(final Bytes32 blockRoot) {
+    return Optional.ofNullable(newPayloadRequestRootsByBlockRoot.get(blockRoot));
   }
 }

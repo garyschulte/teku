@@ -37,6 +37,7 @@ import tech.pegasys.teku.spec.executionlayer.ExecutionLayerChannel;
 import tech.pegasys.teku.spec.executionlayer.PayloadStatus;
 import tech.pegasys.teku.spec.schemas.SchemaDefinitionsBellatrix;
 import tech.pegasys.teku.spec.util.DataStructureUtil;
+import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
 
 class ForkChoicePayloadExecutorTest {
 
@@ -175,6 +176,7 @@ class ForkChoicePayloadExecutorTest {
   }
 
   private ForkChoicePayloadExecutor createPayloadExecutor() {
-    return new ForkChoicePayloadExecutor(block, executionLayer, transitionValidator);
+    return new ForkChoicePayloadExecutor(
+        block, executionLayer, transitionValidator, ExecutionProofManager.NOOP, 0);
   }
 }

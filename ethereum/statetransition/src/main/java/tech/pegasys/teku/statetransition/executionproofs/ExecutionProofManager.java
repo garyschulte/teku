@@ -14,6 +14,7 @@
 package tech.pegasys.teku.statetransition.executionproofs;
 
 import java.util.Optional;
+import org.apache.tuweni.bytes.Bytes32;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
@@ -52,6 +53,15 @@ public interface ExecutionProofManager {
         public SafeFuture<Void> generateProofs(SignedBlockContainer blockContainer) {
           return SafeFuture.COMPLETE;
         }
+
+        @Override
+        public void recordNewPayloadRequestRoot(
+            final Bytes32 blockRoot, final Bytes32 newPayloadRequestRoot) {}
+
+        @Override
+        public Optional<Bytes32> getNewPayloadRequestRoot(final Bytes32 blockRoot) {
+          return Optional.empty();
+        }
       };
 
   void onExecutionProofPublish(ExecutionProof executionProof, RemoteOrigin remoteOrigin);
@@ -70,4 +80,13 @@ public interface ExecutionProofManager {
   }
 
   SafeFuture<Void> generateProofs(SignedBlockContainer blockContainer);
+
+  /**
+   * Records the {@code new_payload_request_root} (EIP-8025 {@code
+   * hash_tree_root(NewPayloadRequest)}) computed for a locally-imported block, so it can later be
+   * correlated against incoming {@link ExecutionProof}s' {@code public_input}.
+   */
+  void recordNewPayloadRequestRoot(Bytes32 blockRoot, Bytes32 newPayloadRequestRoot);
+
+  Optional<Bytes32> getNewPayloadRequestRoot(Bytes32 blockRoot);
 }

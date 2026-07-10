@@ -74,6 +74,7 @@ import tech.pegasys.teku.spec.logic.common.statetransition.results.ExecutionPayl
 import tech.pegasys.teku.spec.logic.common.util.ForkChoiceUtil;
 import tech.pegasys.teku.statetransition.attestation.DeferredAttestations;
 import tech.pegasys.teku.statetransition.block.BlockImportPerformance;
+import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
 import tech.pegasys.teku.statetransition.util.DebugDataDumper;
 import tech.pegasys.teku.statetransition.validation.AttestationStateSelector;
 import tech.pegasys.teku.statetransition.validation.BlockBroadcastValidator;
@@ -443,7 +444,14 @@ public class ForkChoice implements ForkChoiceUpdatedResultSubscriber {
     final SpecVersion specVersion = spec.atSlot(block.getSlot());
 
     final ForkChoicePayloadExecutor payloadExecutor =
-        ForkChoicePayloadExecutor.create(spec, recentChainData, block, executionLayer);
+        ForkChoicePayloadExecutor.create(
+            spec,
+            recentChainData,
+            block,
+            executionLayer,
+            executionProofsAvailabilityCheckerFactory
+                .map(ExecutionProofsAvailabilityCheckerFactory::getExecutionProofManager)
+                .orElse(ExecutionProofManager.NOOP));
     final ForkChoiceUtil forkChoiceUtil = specVersion.getForkChoiceUtil();
     final BlockImportResult preconditionCheckResult =
         forkChoiceUtil.checkOnBlockConditions(
