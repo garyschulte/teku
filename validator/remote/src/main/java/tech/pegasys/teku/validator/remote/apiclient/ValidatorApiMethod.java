@@ -46,11 +46,13 @@ public enum ValidatorApiMethod {
   PREPARE_BEACON_PROPOSER("/eth/v1/validator/prepare_beacon_proposer"),
   REGISTER_VALIDATOR("/eth/v1/validator/register_validator"),
   GET_BLOCK_HEADER("eth/v1/beacon/headers/:block_id"),
+  GET_BLOCK("eth/v2/beacon/blocks/:block_id"),
   GET_CONFIG_SPEC("/eth/v1/config/spec"),
   EVENTS("eth/v1/events"),
   SEND_VALIDATOR_LIVENESS("/eth/v1/validator/liveness/:epoch"),
   BEACON_COMMITTEE_SELECTIONS("/eth/v1/validator/beacon_committee_selections"),
-  SYNC_COMMITTEE_SELECTIONS("/eth/v1/validator/sync_committee_selections");
+  SYNC_COMMITTEE_SELECTIONS("/eth/v1/validator/sync_committee_selections"),
+  SEND_SIGNED_EXECUTION_PROOF("/eth/v1/beacon/pool/execution_proofs");
 
   private final String path;
 

@@ -44,12 +44,14 @@ import tech.pegasys.teku.infrastructure.metrics.TekuMetricCategory;
 import tech.pegasys.teku.infrastructure.metrics.Validator.ValidatorDutyMetricUtils;
 import tech.pegasys.teku.infrastructure.ssz.SszList;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
+import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBlockContainer;
 import tech.pegasys.teku.spec.datastructures.builder.SignedValidatorRegistration;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadEnvelope;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadEnvelope;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.genesis.GenesisData;
 import tech.pegasys.teku.spec.datastructures.metadata.BlockContainerAndMetaData;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
@@ -313,6 +315,21 @@ public class MetricRecordingValidatorApiChannel implements ValidatorApiChannel {
     return countDataRequest(
         delegate.publishSignedExecutionPayload(signedExecutionPayload),
         BeaconNodeRequestLabels.PUBLISH_EXECUTION_PAYLOAD_METHOD);
+  }
+
+  @Override
+  public SafeFuture<Optional<SignedBeaconBlock>> getBeaconBlockByRoot(final Bytes32 blockRoot) {
+    return countOptionalDataRequest(
+        delegate.getBeaconBlockByRoot(blockRoot),
+        BeaconNodeRequestLabels.GET_BEACON_BLOCK_BY_ROOT_METHOD);
+  }
+
+  @Override
+  public SafeFuture<Void> sendSignedExecutionProof(
+      final SignedExecutionProof signedExecutionProof) {
+    return countDataRequest(
+        delegate.sendSignedExecutionProof(signedExecutionProof),
+        BeaconNodeRequestLabels.SEND_SIGNED_EXECUTION_PROOF_METHOD);
   }
 
   private <T> SafeFuture<T> countDataRequest(

@@ -74,6 +74,7 @@ import tech.pegasys.teku.spec.SpecVersion;
 import tech.pegasys.teku.spec.datastructures.attestation.ValidatableAttestation;
 import tech.pegasys.teku.spec.datastructures.blocks.BeaconBlock;
 import tech.pegasys.teku.spec.datastructures.blocks.BeaconBlockAndState;
+import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBlockAndState;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBlockContainer;
 import tech.pegasys.teku.spec.datastructures.builder.SignedValidatorRegistration;
@@ -81,6 +82,7 @@ import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloa
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadEnvelope;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadEnvelope;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.genesis.GenesisData;
 import tech.pegasys.teku.spec.datastructures.metadata.BlockContainerAndMetaData;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
@@ -738,15 +740,7 @@ public class ValidatorApiHandler implements ValidatorApiChannel, SlotEventsChann
               final String reason = getRootCauseMessage(ex);
               return SendSignedBlockResult.rejected(reason);
             })
-        .alwaysRun(blockPublishingPerformance::complete)
-        .thenPeek(
-            __ -> {
-              if (isLocallyCreated) {
-                executionProofManager
-                    .generateProofs(maybeBlindedBlockContainer)
-                    .finish(error -> LOG.debug("failed to generate execution proofs", error));
-              }
-            });
+        .alwaysRun(blockPublishingPerformance::complete);
   }
 
   @Override
@@ -887,6 +881,26 @@ public class ValidatorApiHandler implements ValidatorApiChannel, SlotEventsChann
   public SafeFuture<Void> publishSignedExecutionPayload(
       final SignedExecutionPayloadEnvelope signedExecutionPayload) {
     return executionPayloadPublisher.publishSignedExecutionPayload(signedExecutionPayload);
+  }
+
+  @Override
+  public SafeFuture<Optional<SignedBeaconBlock>> getBeaconBlockByRoot(final Bytes32 blockRoot) {
+    return combinedChainDataClient.getBlockByBlockRoot(blockRoot);
+  }
+
+  @Override
+  public SafeFuture<Void> sendSignedExecutionProof(
+      final SignedExecutionProof signedExecutionProof) {
+    return executionProofManager
+        .onLocallySubmittedExecutionProof(signedExecutionProof)
+        .thenAccept(
+            result -> {
+              if (!result.isAccept()) {
+                LOG.debug(
+                    "Locally-submitted execution proof was not accepted: {}",
+                    result.getDescription().orElse(result.code().toString()));
+              }
+            });
   }
 
   private Optional<SubmitDataError> fromInternalValidationResult(

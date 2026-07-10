@@ -18,7 +18,6 @@ import org.apache.tuweni.bytes.Bytes32;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
-import tech.pegasys.teku.spec.datastructures.blocks.SignedBlockContainer;
 import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.logic.common.statetransition.availability.DataAndValidationResult;
 import tech.pegasys.teku.statetransition.blobs.RemoteOrigin;
@@ -47,11 +46,6 @@ public interface ExecutionProofManager {
         public SafeFuture<DataAndValidationResult<SignedExecutionProof>>
             validateBlockWithExecutionProofs(final SignedBeaconBlock block) {
           return SafeFuture.completedFuture(DataAndValidationResult.notRequired());
-        }
-
-        @Override
-        public SafeFuture<Void> generateProofs(SignedBlockContainer blockContainer) {
-          return SafeFuture.COMPLETE;
         }
 
         @Override
@@ -91,8 +85,6 @@ public interface ExecutionProofManager {
     void onNewValidExecutionProof(
         SignedExecutionProof signedExecutionProof, RemoteOrigin remoteOrigin);
   }
-
-  SafeFuture<Void> generateProofs(SignedBlockContainer blockContainer);
 
   /**
    * Submits a {@link SignedExecutionProof} obtained locally (e.g. via the {@code POST

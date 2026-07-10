@@ -266,4 +266,24 @@ public class ValidatorOptionsTest extends AbstractBeaconNodeCommandTest {
                 .getBeaconApiReadinessExecutorThreads())
         .hasValue(4);
   }
+
+  @Test
+  public void executionProofProverEnabled_isDisabledByDefault() {
+    final ValidatorConfig config =
+        getTekuConfigurationFromArguments().validatorClient().getValidatorConfig();
+    assertThat(config.isExecutionProofProverEnabled()).isFalse();
+    assertThat(config.getExecutionProofProverEndpoint()).isEmpty();
+  }
+
+  @Test
+  public void executionProofProverEnabled_canBeSetWithEndpoint() {
+    final ValidatorConfig config =
+        getTekuConfigurationFromArguments(
+                "--Xexecution-proof-prover-enabled=true",
+                "--Xexecution-proof-prover-endpoint=http://prover.example.com")
+            .validatorClient()
+            .getValidatorConfig();
+    assertThat(config.isExecutionProofProverEnabled()).isTrue();
+    assertThat(config.getExecutionProofProverEndpoint()).contains("http://prover.example.com");
+  }
 }

@@ -15,7 +15,6 @@ package tech.pegasys.teku.cli.options;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import tech.pegasys.teku.cli.AbstractBeaconNodeCommandTest;
 import tech.pegasys.teku.config.TekuConfiguration;
@@ -27,14 +26,6 @@ class ZkChainOptionsTest extends AbstractBeaconNodeCommandTest {
     final TekuConfiguration config =
         getTekuConfigurationFromArguments("--Xstateless-validation-enabled=true");
     assertThat(config.zkChainConfiguration().statelessValidationEnabled()).isTrue();
-  }
-
-  @Test
-  public void generateExecutionProofsEnabled_true() {
-    final TekuConfiguration config =
-        getTekuConfigurationFromArguments(
-            "--Xstateless-validation-enabled=true", "--Xgenerate-execution-proofs-enabled=true");
-    assertThat(config.zkChainConfiguration().generateExecutionProofsEnabled()).isTrue();
   }
 
   @Test
@@ -54,26 +45,5 @@ class ZkChainOptionsTest extends AbstractBeaconNodeCommandTest {
   public void statelessValidationEnabled_isDisabledByDefault() {
     final TekuConfiguration config = getTekuConfigurationFromArguments();
     assertThat(config.zkChainConfiguration().statelessValidationEnabled()).isFalse();
-  }
-
-  @Test
-  public void generateExecutionProofsEnabled_isDisabledByDefault() {
-    final TekuConfiguration config = getTekuConfigurationFromArguments();
-    assertThat(config.zkChainConfiguration().generateExecutionProofsEnabled()).isFalse();
-  }
-
-  @Test
-  public void statelessProofGenerationDelay_receivesDefaultValue() {
-    final TekuConfiguration config = getTekuConfigurationFromArguments();
-    assertThat(config.zkChainConfiguration().proofDelayDurationInMs())
-        .isEqualTo(Duration.ofSeconds(2));
-  }
-
-  @Test
-  public void statelessProofGenerationDelay_receivesCorrectValue() {
-    final TekuConfiguration config =
-        getTekuConfigurationFromArguments("--Xstateless-proofs-generation-delay=3000");
-    assertThat(config.zkChainConfiguration().proofDelayDurationInMs())
-        .isEqualTo(Duration.ofSeconds(3));
   }
 }

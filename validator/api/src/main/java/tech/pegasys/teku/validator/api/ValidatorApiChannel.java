@@ -35,12 +35,14 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture;
 import tech.pegasys.teku.infrastructure.events.ChannelInterface;
 import tech.pegasys.teku.infrastructure.ssz.SszList;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
+import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBlockContainer;
 import tech.pegasys.teku.spec.datastructures.builder.SignedValidatorRegistration;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadEnvelope;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadEnvelope;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.genesis.GenesisData;
 import tech.pegasys.teku.spec.datastructures.metadata.BlockContainerAndMetaData;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
@@ -226,6 +228,18 @@ public interface ValidatorApiChannel extends BuilderApiChannel, ChannelInterface
             final SignedExecutionPayloadEnvelope signedExecutionPayload) {
           return SafeFuture.COMPLETE;
         }
+
+        @Override
+        public SafeFuture<Optional<SignedBeaconBlock>> getBeaconBlockByRoot(
+            final Bytes32 blockRoot) {
+          return SafeFuture.completedFuture(Optional.empty());
+        }
+
+        @Override
+        public SafeFuture<Void> sendSignedExecutionProof(
+            final SignedExecutionProof signedExecutionProof) {
+          return SafeFuture.COMPLETE;
+        }
       };
 
   int UNKNOWN_VALIDATOR_ID = -1;
@@ -306,4 +320,16 @@ public interface ValidatorApiChannel extends BuilderApiChannel, ChannelInterface
 
   SafeFuture<Optional<List<SyncCommitteeSelectionProof>>> getSyncCommitteeSelectionProof(
       List<SyncCommitteeSelectionProof> requests);
+
+  /**
+   * Used by the execution-proof prover duty (EIP-8025) to fetch the content of a block it needs to
+   * prove, on a head update where only the root is known.
+   */
+  SafeFuture<Optional<SignedBeaconBlock>> getBeaconBlockByRoot(Bytes32 blockRoot);
+
+  /**
+   * Submits a locally-generated, validator-signed execution proof for gossip. Equivalent to POSTing
+   * to {@code /eth/v1/beacon/pool/execution_proofs}.
+   */
+  SafeFuture<Void> sendSignedExecutionProof(SignedExecutionProof signedExecutionProof);
 }

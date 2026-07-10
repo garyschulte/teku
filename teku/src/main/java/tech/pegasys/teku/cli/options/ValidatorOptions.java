@@ -189,6 +189,29 @@ public class ValidatorOptions {
       fallbackValue = "true")
   private boolean shutdownWhenValidatorSlashed = DEFAULT_SHUTDOWN_WHEN_VALIDATOR_SLASHED_ENABLED;
 
+  @Option(
+      hidden = true,
+      names = {"--Xexecution-proof-prover-enabled"},
+      paramLabel = "<BOOLEAN>",
+      showDefaultValue = Visibility.ALWAYS,
+      description =
+          "Enable the EIP-8025 execution-proof prover duty: on every new head, request a proof"
+              + " from an external prover service, sign it, and submit it to the beacon node.",
+      arity = "0..1",
+      fallbackValue = "true")
+  private boolean executionProofProverEnabled =
+      ValidatorConfig.DEFAULT_EXECUTION_PROOF_PROVER_ENABLED;
+
+  @Option(
+      hidden = true,
+      names = {"--Xexecution-proof-prover-endpoint"},
+      paramLabel = "<ENDPOINT>",
+      description =
+          "URL of an external EIP-8025 proof prover service (e.g. zkboost) used to generate"
+              + " execution proofs for locally-observed blocks.",
+      arity = "1")
+  private String executionProofProverEndpoint;
+
   public void configure(final TekuConfiguration.Builder builder) {
     builder.validator(
         config ->
@@ -210,7 +233,9 @@ public class ValidatorOptions {
                 .shutdownWhenValidatorSlashedEnabled(shutdownWhenValidatorSlashed)
                 .executorMaxQueueSize(executorMaxQueueSize)
                 .beaconApiExecutorThreads(beaconApiExecutorThreads)
-                .beaconApiReadinessExecutorThreads(beaconApiReadinessExecutorThreads));
+                .beaconApiReadinessExecutorThreads(beaconApiReadinessExecutorThreads)
+                .executionProofProverEnabled(executionProofProverEnabled)
+                .executionProofProverEndpoint(executionProofProverEndpoint));
     validatorProposerOptions.configure(builder);
     validatorKeysOptions.configure(builder);
   }

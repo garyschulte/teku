@@ -49,4 +49,7 @@ public class BeaconNodeRequestLabels {
   public static final String CREATE_UNSIGNED_EXECUTION_PAYLOAD_METHOD =
       "create_unsigned_execution_payload";
   public static final String PUBLISH_EXECUTION_PAYLOAD_METHOD = "publish_execution_payload";
+
+  public static final String GET_BEACON_BLOCK_BY_ROOT_METHOD = "get_beacon_block_by_root";
+  public static final String SEND_SIGNED_EXECUTION_PROOF_METHOD = "send_signed_execution_proof";
 }

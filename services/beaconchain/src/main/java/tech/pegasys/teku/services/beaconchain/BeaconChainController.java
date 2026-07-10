@@ -136,7 +136,6 @@ import tech.pegasys.teku.spec.logic.common.util.BlockRewardCalculatorUtil;
 import tech.pegasys.teku.spec.logic.versions.deneb.helpers.MiscHelpersDeneb;
 import tech.pegasys.teku.spec.logic.versions.fulu.helpers.MiscHelpersFulu;
 import tech.pegasys.teku.spec.networks.Eth2Network;
-import tech.pegasys.teku.spec.schemas.SchemaDefinitionsElectra;
 import tech.pegasys.teku.spec.schemas.SchemaDefinitionsFulu;
 import tech.pegasys.teku.statetransition.CustodyGroupCountChannel;
 import tech.pegasys.teku.statetransition.EpochCachePrimer;
@@ -201,8 +200,6 @@ import tech.pegasys.teku.statetransition.execution.DefaultExecutionPayloadManage
 import tech.pegasys.teku.statetransition.execution.ExecutionPayloadBidManager;
 import tech.pegasys.teku.statetransition.execution.ExecutionPayloadBidManager.RemoteBidOrigin;
 import tech.pegasys.teku.statetransition.execution.ExecutionPayloadManager;
-import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofGenerator;
-import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofGeneratorImpl;
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManagerImpl;
 import tech.pegasys.teku.statetransition.executionproofs.verifier.ExecutionProofVerifierClient;
@@ -725,20 +722,12 @@ public class BeaconChainController extends Service implements BeaconChainControl
               .orElse(ExecutionProofVerifierClient.NOOP);
       final ExecutionProofGossipValidator executionProofGossipValidator =
           ExecutionProofGossipValidator.create(spec, recentChainData, executionProofVerifierClient);
-      final SpecVersion specVersionElectra = spec.forMilestone(SpecMilestone.ELECTRA);
-      final SchemaDefinitionsElectra schemaDefinitionsElectra =
-          SchemaDefinitionsElectra.required(specVersionElectra.getSchemaDefinitions());
-      final ExecutionProofGenerator executionProofGenerator =
-          new ExecutionProofGeneratorImpl(schemaDefinitionsElectra);
 
       executionProofManager =
           new ExecutionProofManagerImpl(
               executionProofGossipValidator,
-              executionProofGenerator,
               executionProofGossipChannel::publishExecutionProof,
-              zkConfig.generateExecutionProofsEnabled(),
               zkConfig.statelessMinProofsRequired(),
-              zkConfig.proofDelayDurationInMs(),
               executionProofAsyncRunner.get(),
               spec);
       executionProofGossipValidator.setExecutionProofManager(executionProofManager);

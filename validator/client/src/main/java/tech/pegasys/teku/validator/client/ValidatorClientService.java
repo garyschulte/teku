@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import okhttp3.OkHttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tuweni.bytes.Bytes32;
@@ -66,6 +67,8 @@ import tech.pegasys.teku.validator.client.duties.ValidatorDutyMetrics;
 import tech.pegasys.teku.validator.client.duties.attestations.AggregationDuty;
 import tech.pegasys.teku.validator.client.duties.attestations.AttestationDutyFactory;
 import tech.pegasys.teku.validator.client.duties.attestations.AttestationProductionDuty;
+import tech.pegasys.teku.validator.client.duties.executionproof.ExecutionProofProverService;
+import tech.pegasys.teku.validator.client.duties.executionproof.RestExecutionProofProverClient;
 import tech.pegasys.teku.validator.client.duties.synccommittee.ChainHeadTracker;
 import tech.pegasys.teku.validator.client.duties.synccommittee.SyncCommitteeScheduledDuties;
 import tech.pegasys.teku.validator.client.loader.HttpClientExternalSignerFactory;
@@ -570,6 +573,26 @@ public class ValidatorClientService extends Service {
     final ValidatorStatusLogger validatorStatusLogger = new ValidatorStatusLogger(validators);
     validatorStatusProvider.subscribeValidatorStatusesUpdates(
         validatorStatusLogger::onUpdatedValidatorStatuses);
+
+    if (config.getValidatorConfig().isExecutionProofProverEnabled()) {
+      config
+          .getValidatorConfig()
+          .getExecutionProofProverEndpoint()
+          .ifPresentOrElse(
+              endpoint ->
+                  validatorTimingChannels.add(
+                      new ExecutionProofProverService(
+                          spec,
+                          forkProvider,
+                          validatorApiChannel,
+                          validators,
+                          validatorIndexProvider,
+                          new RestExecutionProofProverClient(new OkHttpClient(), endpoint))),
+              () ->
+                  LOG.warn(
+                      "--Xexecution-proof-prover-enabled is set but --Xexecution-proof-prover-endpoint"
+                          + " is not configured; the execution-proof prover duty will not run."));
+    }
   }
 
   public static Path getSlashingProtectionPath(final DataDirLayout dataDirLayout) {

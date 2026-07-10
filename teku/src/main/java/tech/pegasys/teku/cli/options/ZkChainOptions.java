@@ -13,7 +13,6 @@
 
 package tech.pegasys.teku.cli.options;
 
-import java.time.Duration;
 import java.util.Optional;
 import picocli.CommandLine;
 import tech.pegasys.teku.config.TekuConfiguration;
@@ -32,16 +31,6 @@ public class ZkChainOptions {
 
   @CommandLine.Option(
       hidden = true,
-      names = {"--Xgenerate-execution-proofs-enabled"},
-      showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
-      description = "Enable generation of execution proofs for blocks.",
-      arity = "0..1",
-      fallbackValue = "true")
-  private boolean generateExecutionProofsEnabled =
-      ZkChainConfiguration.DEFAULT_GENERATE_EXECUTION_PROOFS_ENABLED;
-
-  @CommandLine.Option(
-      hidden = true,
       names = {"--Xstateless-min-proofs-required"},
       paramLabel = "<NUMBER>",
       description =
@@ -49,15 +38,6 @@ public class ZkChainOptions {
       arity = "1")
   private int statelessMinProofsRequired =
       ZkChainConfiguration.DEFAULT_STATELESS_MIN_PROOFS_REQUIRED;
-
-  @CommandLine.Option(
-      hidden = true,
-      names = {"--Xstateless-proofs-generation-delay"},
-      paramLabel = "<DURATION>",
-      description = "Proof generation artificial delay in milliseconds.",
-      arity = "1")
-  private long statelessProofGenerationDelay =
-      ZkChainConfiguration.DEFAULT_PROOF_GENERATION_DELAY.toMillis();
 
   @CommandLine.Option(
       hidden = true,
@@ -75,9 +55,7 @@ public class ZkChainOptions {
         zkChainConfiguration ->
             zkChainConfiguration
                 .statelessValidationEnabled(statelessValidationEnabled)
-                .generateExecutionProofsEnabled(generateExecutionProofsEnabled)
                 .statelessMinProofsRequired(statelessMinProofsRequired)
-                .proofDelayDurationInMs(Duration.ofMillis(statelessProofGenerationDelay))
                 .executionProofVerifierEndpoint(
                     Optional.ofNullable(executionProofVerifierEndpoint)));
   }

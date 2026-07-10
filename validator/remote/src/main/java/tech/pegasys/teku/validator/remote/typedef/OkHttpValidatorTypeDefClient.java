@@ -33,11 +33,14 @@ import tech.pegasys.teku.ethereum.json.types.validator.ProposerDuties;
 import tech.pegasys.teku.ethereum.json.types.validator.SyncCommitteeDuties;
 import tech.pegasys.teku.ethereum.json.types.validator.SyncCommitteeSelectionProof;
 import tech.pegasys.teku.ethereum.json.types.validator.SyncCommitteeSubnetSubscription;
+import tech.pegasys.teku.infrastructure.json.exceptions.BadRequestException;
 import tech.pegasys.teku.infrastructure.ssz.SszList;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.Spec;
+import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBlockContainer;
 import tech.pegasys.teku.spec.datastructures.builder.SignedValidatorRegistration;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.metadata.BlockContainerAndMetaData;
 import tech.pegasys.teku.spec.datastructures.metadata.ObjectAndMetaData;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
@@ -58,6 +61,7 @@ import tech.pegasys.teku.validator.remote.typedef.handlers.BeaconCommitteeSelect
 import tech.pegasys.teku.validator.remote.typedef.handlers.CreateAggregateAttestationRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.CreateAttestationDataRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.CreateSyncCommitteeContributionRequest;
+import tech.pegasys.teku.validator.remote.typedef.handlers.GetBlockByRootRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.GetPeerCountRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.GetProposerDutiesRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.GetStateValidatorsRequest;
@@ -71,6 +75,7 @@ import tech.pegasys.teku.validator.remote.typedef.handlers.SendAggregateAndProof
 import tech.pegasys.teku.validator.remote.typedef.handlers.SendContributionAndProofsRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.SendSignedAttestationsRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.SendSignedBlockRequest;
+import tech.pegasys.teku.validator.remote.typedef.handlers.SendSignedExecutionProofRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.SendSubscribeToSyncCommitteeSubnetsRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.SendSyncCommitteeMessagesRequest;
 import tech.pegasys.teku.validator.remote.typedef.handlers.SendValidatorLivenessRequest;
@@ -286,5 +291,18 @@ public class OkHttpValidatorTypeDefClient extends OkHttpValidatorMinimalTypeDefC
         new SendSignedAttestationsRequest(
             getBaseEndpoint(), getOkHttpClient(), attestationsV2ApisEnabled, spec);
     return sendSignedAttestationsRequest.submit(attestations);
+  }
+
+  public Optional<SignedBeaconBlock> getBeaconBlockByRoot(final Bytes32 blockRoot) {
+    final GetBlockByRootRequest getBlockByRootRequest =
+        new GetBlockByRootRequest(getBaseEndpoint(), getOkHttpClient(), spec);
+    return getBlockByRootRequest.submit(blockRoot);
+  }
+
+  public void sendSignedExecutionProof(final SignedExecutionProof signedExecutionProof)
+      throws BadRequestException {
+    final SendSignedExecutionProofRequest sendSignedExecutionProofRequest =
+        new SendSignedExecutionProofRequest(getBaseEndpoint(), getOkHttpClient());
+    sendSignedExecutionProofRequest.submit(signedExecutionProof);
   }
 }

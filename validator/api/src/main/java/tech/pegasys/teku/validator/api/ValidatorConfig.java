@@ -70,6 +70,7 @@ public class ValidatorConfig {
   public static final UInt64 DEFAULT_BUILDER_REGISTRATION_GAS_LIMIT = UInt64.valueOf(60_000_000);
   public static final boolean DEFAULT_OBOL_DVT_SELECTIONS_ENDPOINT_ENABLED = false;
   public static final boolean DEFAULT_ATTESTATIONS_V2_APIS_ENABLED = false;
+  public static final boolean DEFAULT_EXECUTION_PROOF_PROVER_ENABLED = false;
 
   private final List<String> validatorKeys;
   private final List<String> validatorExternalSignerPublicKeySources;
@@ -114,6 +115,8 @@ public class ValidatorConfig {
   private final boolean isLocalSlashingProtectionSynchronizedModeEnabled;
   private final boolean dvtSelectionsEndpointEnabled;
   private final boolean attestationsV2ApisEnabled;
+  private final boolean executionProofProverEnabled;
+  private final Optional<String> executionProofProverEndpoint;
 
   private ValidatorConfig(
       final List<String> validatorKeys,
@@ -155,7 +158,9 @@ public class ValidatorConfig {
       final Optional<String> sentryNodeConfigurationFile,
       final boolean isLocalSlashingProtectionSynchronizedModeEnabled,
       final boolean dvtSelectionsEndpointEnabled,
-      final boolean attestationsV2ApisEnabled) {
+      final boolean attestationsV2ApisEnabled,
+      final boolean executionProofProverEnabled,
+      final Optional<String> executionProofProverEndpoint) {
     this.validatorKeys = validatorKeys;
     this.validatorExternalSignerPublicKeySources = validatorExternalSignerPublicKeySources;
     this.validatorExternalSignerUrl = validatorExternalSignerUrl;
@@ -201,6 +206,8 @@ public class ValidatorConfig {
         isLocalSlashingProtectionSynchronizedModeEnabled;
     this.dvtSelectionsEndpointEnabled = dvtSelectionsEndpointEnabled;
     this.attestationsV2ApisEnabled = attestationsV2ApisEnabled;
+    this.executionProofProverEnabled = executionProofProverEnabled;
+    this.executionProofProverEndpoint = executionProofProverEndpoint;
 
     LOG.debug(
         "Executor queue - {} threads, max queue size {} ", executorThreads, executorMaxQueueSize);
@@ -378,6 +385,14 @@ public class ValidatorConfig {
     return attestationsV2ApisEnabled;
   }
 
+  public boolean isExecutionProofProverEnabled() {
+    return executionProofProverEnabled;
+  }
+
+  public Optional<String> getExecutionProofProverEndpoint() {
+    return executionProofProverEndpoint;
+  }
+
   public static final class Builder {
     private List<String> validatorKeys = new ArrayList<>();
     private List<String> validatorExternalSignerPublicKeySources = new ArrayList<>();
@@ -432,6 +447,8 @@ public class ValidatorConfig {
         DEFAULT_VALIDATOR_IS_LOCAL_SLASHING_PROTECTION_SYNCHRONIZED_ENABLED;
     private boolean dvtSelectionsEndpointEnabled = DEFAULT_OBOL_DVT_SELECTIONS_ENDPOINT_ENABLED;
     private boolean attestationsV2ApisEnabled = DEFAULT_ATTESTATIONS_V2_APIS_ENABLED;
+    private boolean executionProofProverEnabled = DEFAULT_EXECUTION_PROOF_PROVER_ENABLED;
+    private Optional<String> executionProofProverEndpoint = Optional.empty();
 
     private Builder() {}
 
@@ -696,6 +713,16 @@ public class ValidatorConfig {
       return this;
     }
 
+    public Builder executionProofProverEnabled(final boolean executionProofProverEnabled) {
+      this.executionProofProverEnabled = executionProofProverEnabled;
+      return this;
+    }
+
+    public Builder executionProofProverEndpoint(final String executionProofProverEndpoint) {
+      this.executionProofProverEndpoint = Optional.ofNullable(executionProofProverEndpoint);
+      return this;
+    }
+
     public ValidatorConfig build() {
       validateExternalSignerUrlAndPublicKeys();
       validateExternalSignerKeystoreAndPasswordFileConfig();
@@ -741,7 +768,9 @@ public class ValidatorConfig {
           sentryNodeConfigurationFile,
           isLocalSlashingProtectionSynchronizedModeEnabled,
           dvtSelectionsEndpointEnabled,
-          attestationsV2ApisEnabled);
+          attestationsV2ApisEnabled,
+          executionProofProverEnabled,
+          executionProofProverEndpoint);
     }
 
     private void validateExternalSignerUrlAndPublicKeys() {
