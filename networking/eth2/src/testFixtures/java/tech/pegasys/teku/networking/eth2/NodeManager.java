@@ -25,11 +25,13 @@ import tech.pegasys.teku.infrastructure.events.ChannelExceptionHandler;
 import tech.pegasys.teku.infrastructure.events.EventChannels;
 import tech.pegasys.teku.networking.eth2.Eth2P2PNetworkFactory.Eth2P2PNetworkBuilder;
 import tech.pegasys.teku.networking.eth2.gossip.BlockGossipChannel;
+import tech.pegasys.teku.networking.eth2.gossip.ExecutionProofGossipChannel;
 import tech.pegasys.teku.networking.p2p.network.PeerAddress;
 import tech.pegasys.teku.networking.p2p.peer.Peer;
 import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.TestSpecFactory;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.statetransition.BeaconChainUtil;
 import tech.pegasys.teku.storage.client.MemoryOnlyRecentChainData;
 import tech.pegasys.teku.storage.client.RecentChainData;
@@ -40,16 +42,19 @@ public class NodeManager {
   private static final Spec DEFAULT_SPEC = TestSpecFactory.createMinimalPhase0();
 
   private final BlockGossipChannel blockGossipChannel;
+  private final ExecutionProofGossipChannel executionProofGossipChannel;
   private final RecentChainData storageClient;
   private final BeaconChainUtil chainUtil;
   private final Eth2P2PNetwork eth2P2PNetwork;
 
   private NodeManager(
       final BlockGossipChannel blockGossipChannel,
+      final ExecutionProofGossipChannel executionProofGossipChannel,
       final RecentChainData storageClient,
       final BeaconChainUtil chainUtil,
       final Eth2P2PNetwork eth2P2PNetwork) {
     this.blockGossipChannel = blockGossipChannel;
+    this.executionProofGossipChannel = executionProofGossipChannel;
     this.storageClient = storageClient;
     this.chainUtil = chainUtil;
     this.eth2P2PNetwork = eth2P2PNetwork;
@@ -110,9 +115,12 @@ public class NodeManager {
 
     final BlockGossipChannel blockGossipChannel =
         eventChannels.getPublisher(BlockGossipChannel.class, asyncRunner);
+    final ExecutionProofGossipChannel executionProofGossipChannel =
+        eventChannels.getPublisher(ExecutionProofGossipChannel.class, asyncRunner);
 
     final Eth2P2PNetwork eth2P2PNetwork = networkBuilder.startNetwork();
-    return new NodeManager(blockGossipChannel, storageClient, chainUtil, eth2P2PNetwork);
+    return new NodeManager(
+        blockGossipChannel, executionProofGossipChannel, storageClient, chainUtil, eth2P2PNetwork);
   }
 
   public SafeFuture<Peer> connect(final NodeManager peer) {
@@ -135,5 +143,9 @@ public class NodeManager {
 
   public void gossipBlock(final SignedBeaconBlock block) {
     blockGossipChannel.publishBlock(block).finishDebug(LOG);
+  }
+
+  public void gossipExecutionProof(final SignedExecutionProof signedExecutionProof) {
+    executionProofGossipChannel.publishExecutionProof(signedExecutionProof);
   }
 }

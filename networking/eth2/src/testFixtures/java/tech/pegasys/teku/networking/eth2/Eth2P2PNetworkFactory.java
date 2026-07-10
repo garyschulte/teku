@@ -100,7 +100,7 @@ import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.PayloadAttestationMessage;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadEnvelope;
-import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
@@ -166,7 +166,8 @@ public class Eth2P2PNetworkFactory {
     protected OperationProcessor<ValidatableSyncCommitteeMessage> syncCommitteeMessageProcessor;
     protected OperationProcessor<SignedBlsToExecutionChange> signedBlsToExecutionChangeProcessor;
     protected OperationProcessor<DataColumnSidecar> dataColumnSidecarOperationProcessor;
-    protected OperationProcessor<ExecutionProof> executionProofOperationProcessor;
+    protected OperationProcessor<SignedExecutionProof> executionProofOperationProcessor;
+    protected boolean executionProofTopicEnabled = false;
     protected OperationProcessor<SignedExecutionPayloadEnvelope> executionPayloadProcessor;
     protected OperationProcessor<PayloadAttestationMessage> payloadAttestationMessageProcessor;
     protected OperationProcessor<SignedExecutionPayloadBid> executionPayloadBidProcessor;
@@ -227,8 +228,6 @@ public class Eth2P2PNetworkFactory {
         final SubnetSubscriptionService syncCommitteeSubnetService =
             new SubnetSubscriptionService();
         final SubnetSubscriptionService dataColumnSidecarSubnetService =
-            new SubnetSubscriptionService();
-        final SubnetSubscriptionService executionProofSubnetService =
             new SubnetSubscriptionService();
         final CombinedChainDataClient combinedChainDataClient =
             new CombinedChainDataClient(
@@ -387,7 +386,6 @@ public class Eth2P2PNetworkFactory {
             attestationSubnetService,
             syncCommitteeSubnetService,
             dataColumnSidecarSubnetService,
-            executionProofSubnetService,
             gossipEncoding,
             GossipConfigurator.NOOP,
             processedAttestationSubscriptionProvider,
@@ -587,7 +585,14 @@ public class Eth2P2PNetworkFactory {
                       .minPeers(20)
                       .maxPeers(30)
                       .minRandomlySelectedPeers(0))
+          .executionProofTopicEnabled(executionProofTopicEnabled)
           .build();
+    }
+
+    public Eth2P2PNetworkBuilder executionProofTopicEnabled(
+        final boolean executionProofTopicEnabled) {
+      this.executionProofTopicEnabled = executionProofTopicEnabled;
+      return this;
     }
 
     @SuppressWarnings("deprecation")
@@ -802,7 +807,7 @@ public class Eth2P2PNetworkFactory {
     }
 
     public Eth2P2PNetworkBuilder gossipedExecutionProofOperationProcessor(
-        final OperationProcessor<ExecutionProof> executionProofOperationProcessor) {
+        final OperationProcessor<SignedExecutionProof> executionProofOperationProcessor) {
       checkNotNull(executionProofOperationProcessor);
       this.executionProofOperationProcessor = executionProofOperationProcessor;
       return this;

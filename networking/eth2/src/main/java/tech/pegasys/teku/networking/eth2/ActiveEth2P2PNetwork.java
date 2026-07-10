@@ -74,7 +74,6 @@ public class ActiveEth2P2PNetwork extends DelegatingP2PNetwork<Eth2Peer> impleme
   private final SubnetSubscriptionService attestationSubnetService;
   private final SubnetSubscriptionService syncCommitteeSubnetService;
   private final SubnetSubscriptionService dataColumnSidecarSubnetService;
-  private final SubnetSubscriptionService executionProofSubnetService;
   private final ProcessedAttestationSubscriptionProvider processedAttestationSubscriptionProvider;
   private final AtomicBoolean gossipStarted = new AtomicBoolean(false);
 
@@ -99,7 +98,6 @@ public class ActiveEth2P2PNetwork extends DelegatingP2PNetwork<Eth2Peer> impleme
       final SubnetSubscriptionService attestationSubnetService,
       final SubnetSubscriptionService syncCommitteeSubnetService,
       final SubnetSubscriptionService dataColumnSidecarSubnetService,
-      final SubnetSubscriptionService executionProofSubnetService,
       final GossipEncoding gossipEncoding,
       final GossipConfigurator gossipConfigurator,
       final ProcessedAttestationSubscriptionProvider processedAttestationSubscriptionProvider,
@@ -117,7 +115,6 @@ public class ActiveEth2P2PNetwork extends DelegatingP2PNetwork<Eth2Peer> impleme
     this.attestationSubnetService = attestationSubnetService;
     this.syncCommitteeSubnetService = syncCommitteeSubnetService;
     this.dataColumnSidecarSubnetService = dataColumnSidecarSubnetService;
-    this.executionProofSubnetService = executionProofSubnetService;
     this.processedAttestationSubscriptionProvider = processedAttestationSubscriptionProvider;
     this.allTopicsFilterEnabled = allTopicsFilterEnabled;
   }
@@ -364,18 +361,6 @@ public class ActiveEth2P2PNetwork extends DelegatingP2PNetwork<Eth2Peer> impleme
   public void unsubscribeFromDataColumnSidecarSubnetId(final int subnetId) {
     gossipForkManager.unsubscribeFromDataColumnSidecarSubnetId(subnetId);
     dataColumnSidecarSubnetService.removeSubscription(subnetId);
-  }
-
-  @Override
-  public void subscribeToExecutionProofSubnetId(final int subnetId) {
-    gossipForkManager.subscribeToExecutionProofSubnetId(subnetId);
-    executionProofSubnetService.addSubscription(subnetId);
-  }
-
-  @Override
-  public void unsubscribeFromExecutionProofSubnetId(final int subnetId) {
-    gossipForkManager.unsubscribeFromExecutionProofSubnetId(subnetId);
-    executionProofSubnetService.removeSubscription(subnetId);
   }
 
   @Override

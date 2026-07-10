@@ -86,7 +86,7 @@ import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.PayloadAttestationMessage;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadEnvelope;
-import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.SignedBlsToExecutionChange;
@@ -152,7 +152,7 @@ public class Eth2P2PNetworkBuilder {
   protected OperationProcessor<ValidatableSyncCommitteeMessage>
       gossipedSyncCommitteeMessageProcessor;
   protected OperationProcessor<DataColumnSidecar> dataColumnSidecarOperationProcessor;
-  protected OperationProcessor<ExecutionProof> executionProofOperationProcessor;
+  protected OperationProcessor<SignedExecutionProof> executionProofOperationProcessor;
   protected StatusMessageFactory statusMessageFactory;
   protected boolean recordMessageArrival;
   protected DebugDataDumper debugDataDumper;
@@ -173,7 +173,6 @@ public class Eth2P2PNetworkBuilder {
     final SubnetSubscriptionService syncCommitteeSubnetService = new SubnetSubscriptionService();
     final SubnetSubscriptionService dataColumnSidecarSubnetService =
         new SubnetSubscriptionService();
-    final SubnetSubscriptionService executionProofSubnetService = new SubnetSubscriptionService();
     final DiscoveryNodeIdExtractor discoveryNodeIdExtractor = new LibP2PDiscoveryNodeIdExtractor();
     final RpcEncoding rpcEncoding =
         RpcEncoding.createSszSnappyEncoding(spec.getNetworkingConfig().getMaxPayloadSize());
@@ -230,7 +229,6 @@ public class Eth2P2PNetworkBuilder {
         attestationSubnetService,
         syncCommitteeSubnetService,
         dataColumnSidecarSubnetService,
-        executionProofSubnetService,
         gossipEncoding,
         config.getGossipConfigurator(),
         processedAttestationSubscriptionProvider,
@@ -771,7 +769,7 @@ public class Eth2P2PNetworkBuilder {
   }
 
   public Eth2P2PNetworkBuilder gossipedExecutionProofOperationProcessor(
-      final OperationProcessor<ExecutionProof> executionProofOperationProcessor) {
+      final OperationProcessor<SignedExecutionProof> executionProofOperationProcessor) {
     checkNotNull(executionProofOperationProcessor);
     this.executionProofOperationProcessor = executionProofOperationProcessor;
     return this;

@@ -20,16 +20,17 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import tech.pegasys.teku.infrastructure.async.SafeFuture;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
-import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.logic.common.statetransition.availability.AvailabilityChecker;
 import tech.pegasys.teku.spec.logic.common.statetransition.availability.AvailabilityValidationResult;
 import tech.pegasys.teku.spec.logic.common.statetransition.availability.DataAndValidationResult;
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
 
-public class ExecutionProofsAvailabilityChecker implements AvailabilityChecker<ExecutionProof> {
+public class ExecutionProofsAvailabilityChecker
+    implements AvailabilityChecker<SignedExecutionProof> {
   private static final Logger LOG = LogManager.getLogger();
   private final ExecutionProofManager executionProofManager;
-  private final SafeFuture<DataAndValidationResult<ExecutionProof>> validationResult =
+  private final SafeFuture<DataAndValidationResult<SignedExecutionProof>> validationResult =
       new SafeFuture<>();
   private final SignedBeaconBlock block;
   private final AvailabilityChecker<?> delegate;
@@ -55,7 +56,7 @@ public class ExecutionProofsAvailabilityChecker implements AvailabilityChecker<E
   }
 
   @Override
-  public SafeFuture<DataAndValidationResult<ExecutionProof>> getAvailabilityCheckResult() {
+  public SafeFuture<DataAndValidationResult<SignedExecutionProof>> getAvailabilityCheckResult() {
     return delegate
         .getAvailabilityCheckResult()
         .thenCompose(
@@ -66,7 +67,7 @@ public class ExecutionProofsAvailabilityChecker implements AvailabilityChecker<E
                     "Blob/DataColumn availability valid, proceeding to execution proofs validation");
                 return validationResult;
               } else {
-                List<ExecutionProof> emptyList = Collections.emptyList();
+                List<SignedExecutionProof> emptyList = Collections.emptyList();
                 return SafeFuture.completedFuture(
                     new DataAndValidationResult<>(
                         AvailabilityValidationResult.NOT_AVAILABLE, emptyList, daResult.cause()));

@@ -21,14 +21,13 @@ import tech.pegasys.teku.infrastructure.async.AsyncRunner;
 import tech.pegasys.teku.infrastructure.bytes.Bytes4;
 import tech.pegasys.teku.networking.eth2.gossip.ExecutionProofGossipManager;
 import tech.pegasys.teku.networking.eth2.gossip.encoding.GossipEncoding;
-import tech.pegasys.teku.networking.eth2.gossip.subnets.ExecutionProofSubnetSubscriptions;
 import tech.pegasys.teku.networking.eth2.gossip.topics.OperationProcessor;
 import tech.pegasys.teku.networking.p2p.discovery.DiscoveryNetwork;
 import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.datastructures.attestation.ValidatableAttestation;
 import tech.pegasys.teku.spec.datastructures.blobs.versions.deneb.BlobSidecar;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
-import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.SignedBlsToExecutionChange;
@@ -37,12 +36,13 @@ import tech.pegasys.teku.spec.datastructures.operations.versions.altair.SignedCo
 import tech.pegasys.teku.spec.datastructures.operations.versions.altair.ValidatableSyncCommitteeMessage;
 import tech.pegasys.teku.spec.datastructures.state.Fork;
 import tech.pegasys.teku.spec.datastructures.state.ForkInfo;
+import tech.pegasys.teku.spec.schemas.SchemaDefinitionsElectra;
 import tech.pegasys.teku.statetransition.util.DebugDataDumper;
 import tech.pegasys.teku.storage.client.RecentChainData;
 
 public class GossipForkSubscriptionsElectra extends GossipForkSubscriptionsDeneb {
 
-  final OperationProcessor<ExecutionProof> executionProofOperationProcessor;
+  final OperationProcessor<SignedExecutionProof> executionProofOperationProcessor;
 
   private Optional<ExecutionProofGossipManager> executionProofGossipManager;
   private final boolean isExecutionProofTopicEnabled;
@@ -70,7 +70,7 @@ public class GossipForkSubscriptionsElectra extends GossipForkSubscriptionsDeneb
       final OperationProcessor<SignedBlsToExecutionChange>
           signedBlsToExecutionChangeOperationProcessor,
       final DebugDataDumper debugDataDumper,
-      final OperationProcessor<ExecutionProof> executionProofOperationProcessor,
+      final OperationProcessor<SignedExecutionProof> executionProofOperationProcessor,
       final boolean isExecutionProofTopicEnabled) {
     super(
         fork,
@@ -103,22 +103,26 @@ public class GossipForkSubscriptionsElectra extends GossipForkSubscriptionsDeneb
 
   private void addExecutionProofGossipManager(final ForkInfo forkInfo, final Bytes4 forkDigest) {
     if (isExecutionProofTopicEnabled) {
-      LOG.debug("Creating ExecutionProofSubnetSubscriptions");
-      ExecutionProofSubnetSubscriptions executionProofSubnetSubscriptions =
-          new ExecutionProofSubnetSubscriptions(
-              spec,
+      LOG.debug("Creating ExecutionProofGossipManager");
+      final SchemaDefinitionsElectra schemaDefinitions =
+          SchemaDefinitionsElectra.required(
+              spec.atEpoch(getActivationEpoch()).getSchemaDefinitions());
+
+      final ExecutionProofGossipManager gossipManager =
+          new ExecutionProofGossipManager(
+              recentChainData,
+              schemaDefinitions,
               asyncRunner,
               discoveryNetwork,
               gossipEncoding,
-              recentChainData,
-              executionProofOperationProcessor,
-              debugDataDumper,
               forkInfo,
-              forkDigest);
+              forkDigest,
+              executionProofOperationProcessor,
+              spec.getNetworkingConfig(),
+              debugDataDumper);
 
-      executionProofGossipManager =
-          Optional.of(new ExecutionProofGossipManager(executionProofSubnetSubscriptions));
-      addGossipManager(executionProofGossipManager.get());
+      addGossipManager(gossipManager);
+      executionProofGossipManager = Optional.of(gossipManager);
     } else {
       LOG.debug("Using ExecutionProofGossipManager.NOOP");
       executionProofGossipManager = Optional.empty();
@@ -126,20 +130,8 @@ public class GossipForkSubscriptionsElectra extends GossipForkSubscriptionsDeneb
   }
 
   @Override
-  public void publishExecutionProof(final ExecutionProof executionProof) {
+  public void publishExecutionProof(final SignedExecutionProof signedExecutionProof) {
     executionProofGossipManager.ifPresent(
-        epGossipManager -> epGossipManager.publish(executionProof));
-  }
-
-  @Override
-  public void subscribeToExecutionProofSubnet(final int subnetId) {
-    executionProofGossipManager.ifPresent(
-        epGossipManager -> epGossipManager.subscribeToSubnetId(subnetId));
-  }
-
-  @Override
-  public void unsubscribeFromExecutionProofSubnet(final int subnetId) {
-    executionProofGossipManager.ifPresent(
-        epGossipManager -> epGossipManager.unsubscribeFromSubnetId(subnetId));
+        epGossipManager -> epGossipManager.publish(signedExecutionProof));
   }
 }

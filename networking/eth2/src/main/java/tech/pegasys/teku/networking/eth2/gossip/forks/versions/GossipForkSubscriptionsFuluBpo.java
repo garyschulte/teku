@@ -24,7 +24,7 @@ import tech.pegasys.teku.spec.datastructures.attestation.ValidatableAttestation;
 import tech.pegasys.teku.spec.datastructures.blobs.DataColumnSidecar;
 import tech.pegasys.teku.spec.datastructures.blobs.versions.deneb.BlobSidecar;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
-import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.SignedBlsToExecutionChange;
@@ -63,7 +63,7 @@ public class GossipForkSubscriptionsFuluBpo extends GossipForkSubscriptionsFulu 
       final OperationProcessor<SignedBlsToExecutionChange>
           signedBlsToExecutionChangeOperationProcessor,
       final OperationProcessor<DataColumnSidecar> dataColumnSidecarOperationProcessor,
-      final OperationProcessor<ExecutionProof> executionProofOperationProcessor,
+      final OperationProcessor<SignedExecutionProof> executionProofOperationProcessor,
       final DebugDataDumper debugDataDumper,
       final DasGossipLogger dasGossipLogger,
       final BlobParameters bpo,

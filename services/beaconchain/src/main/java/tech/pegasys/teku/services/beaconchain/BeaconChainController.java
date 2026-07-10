@@ -715,7 +715,7 @@ public class BeaconChainController extends Service implements BeaconChainControl
       final ExecutionProofGossipChannel executionProofGossipChannel =
           eventChannels.getPublisher(ExecutionProofGossipChannel.class, networkAsyncRunner);
       final ExecutionProofGossipValidator executionProofGossipValidator =
-          ExecutionProofGossipValidator.create();
+          ExecutionProofGossipValidator.create(spec, recentChainData);
       final SpecVersion specVersionElectra = spec.forMilestone(SpecMilestone.ELECTRA);
       final SchemaDefinitionsElectra schemaDefinitionsElectra =
           SchemaDefinitionsElectra.required(specVersionElectra.getSchemaDefinitions());
@@ -732,6 +732,7 @@ public class BeaconChainController extends Service implements BeaconChainControl
               zkConfig.proofDelayDurationInMs(),
               executionProofAsyncRunner.get(),
               spec);
+      executionProofGossipValidator.setExecutionProofManager(executionProofManager);
       executionProofsAvailabilityCheckerFactory =
           Optional.of(new ExecutionProofsAvailabilityCheckerFactory(executionProofManager));
     } else {

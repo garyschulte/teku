@@ -21,7 +21,6 @@ import static org.mockito.Mockito.spy;
 import static tech.pegasys.teku.networking.eth2.gossip.encoding.GossipEncoding.SSZ_SNAPPY;
 import static tech.pegasys.teku.networking.eth2.gossip.topics.GossipTopicName.getAttestationSubnetTopicName;
 import static tech.pegasys.teku.networking.eth2.gossip.topics.GossipTopicName.getBlobSidecarSubnetTopicName;
-import static tech.pegasys.teku.networking.eth2.gossip.topics.GossipTopicName.getExecutionProofSubnetTopicName;
 import static tech.pegasys.teku.networking.eth2.gossip.topics.GossipTopicName.getSyncCommitteeSubnetTopicName;
 import static tech.pegasys.teku.spec.SpecMilestone.DENEB;
 import static tech.pegasys.teku.spec.SpecMilestone.ELECTRA;
@@ -42,7 +41,6 @@ import tech.pegasys.teku.spec.TestSpecContext;
 import tech.pegasys.teku.spec.TestSpecFactory;
 import tech.pegasys.teku.spec.TestSpecInvocationContextProvider.SpecContext;
 import tech.pegasys.teku.spec.config.BlobScheduleEntry;
-import tech.pegasys.teku.spec.config.Constants;
 import tech.pegasys.teku.spec.config.SpecConfig;
 import tech.pegasys.teku.spec.config.SpecConfigDeneb;
 import tech.pegasys.teku.spec.logic.versions.fulu.helpers.BlobParameters;
@@ -243,24 +241,18 @@ class Eth2GossipTopicFilterTest {
   }
 
   @TestTemplate
-  void shouldNotConsiderExecutionProofSubnetsRelevantByDefault() {
+  void shouldNotConsiderExecutionProofTopicRelevantByDefault() {
     assumeThat(nextSpecMilestone).isEqualTo(ELECTRA);
-    for (int i = 0; i < Constants.MAX_EXECUTION_PROOF_SUBNETS; i++) {
-      assertThat(filter.isRelevantTopic(getTopicName(getExecutionProofSubnetTopicName(i))))
-          .isFalse();
-    }
+    assertThat(filter.isRelevantTopic(getTopicName(GossipTopicName.EXECUTION_PROOF))).isFalse();
   }
 
   @TestTemplate
-  void shouldConsiderExecutionProofSubnetsRelevantWhenEnabled() {
+  void shouldConsiderExecutionProofTopicRelevantWhenEnabled() {
     P2PConfig p2pConfigOverwritten =
         P2PConfig.builder().specProvider(spec).executionProofTopicEnabled(true).build();
     filter = new Eth2GossipTopicFilter(recentChainData, SSZ_SNAPPY, spec, p2pConfigOverwritten);
     assumeThat(nextSpecMilestone).isEqualTo(ELECTRA);
-    for (int i = 0; i < Constants.MAX_EXECUTION_PROOF_SUBNETS; i++) {
-      assertThat(filter.isRelevantTopic(getTopicName(getExecutionProofSubnetTopicName(i))))
-          .isTrue();
-    }
+    assertThat(filter.isRelevantTopic(getTopicName(GossipTopicName.EXECUTION_PROOF))).isTrue();
   }
 
   private String getTopicName(final GossipTopicName name) {

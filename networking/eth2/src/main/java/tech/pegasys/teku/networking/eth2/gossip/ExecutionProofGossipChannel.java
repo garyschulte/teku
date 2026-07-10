@@ -15,15 +15,15 @@ package tech.pegasys.teku.networking.eth2.gossip;
 
 import java.util.List;
 import tech.pegasys.teku.infrastructure.events.VoidReturningChannelInterface;
-import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 
 public interface ExecutionProofGossipChannel extends VoidReturningChannelInterface {
 
-  ExecutionProofGossipChannel NOOP = executionProof -> {};
+  ExecutionProofGossipChannel NOOP = signedExecutionProof -> {};
 
-  default void publishExecutionProofs(final List<ExecutionProof> executionProofs) {
-    executionProofs.forEach(this::publishExecutionProof);
+  default void publishExecutionProofs(final List<SignedExecutionProof> signedExecutionProofs) {
+    signedExecutionProofs.forEach(this::publishExecutionProof);
   }
 
-  void publishExecutionProof(ExecutionProof executionProof);
+  void publishExecutionProof(SignedExecutionProof signedExecutionProof);
 }

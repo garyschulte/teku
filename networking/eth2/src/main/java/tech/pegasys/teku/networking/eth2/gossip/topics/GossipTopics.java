@@ -23,7 +23,6 @@ import tech.pegasys.teku.networking.eth2.P2PConfig;
 import tech.pegasys.teku.networking.eth2.gossip.encoding.GossipEncoding;
 import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.SpecMilestone;
-import tech.pegasys.teku.spec.config.Constants;
 import tech.pegasys.teku.spec.constants.NetworkConstants;
 
 /**
@@ -75,12 +74,6 @@ public class GossipTopics {
         forkDigest, GossipTopicName.getDataColumnSidecarSubnetTopicName(subnetId), gossipEncoding);
   }
 
-  public static String getExecutionProofSubnetTopic(
-      final Bytes4 forkDigest, final int subnetId, final GossipEncoding gossipEncoding) {
-    return getTopic(
-        forkDigest, GossipTopicName.getExecutionProofSubnetTopicName(subnetId), gossipEncoding);
-  }
-
   public static Set<String> getAllDataColumnSidecarSubnetTopics(
       final GossipEncoding gossipEncoding, final Bytes4 forkDigest, final Spec spec) {
 
@@ -117,14 +110,18 @@ public class GossipTopics {
 
     topics.addAll(getAllDataColumnSidecarSubnetTopics(gossipEncoding, forkDigest, spec));
 
-    if (p2pConfig.isExecutionProofTopicEnabled()) {
-      for (int i = 0; i < Constants.MAX_EXECUTION_PROOF_SUBNETS; i++) {
-        topics.add(getExecutionProofSubnetTopic(forkDigest, i, gossipEncoding));
+    for (GossipTopicName topicName : GossipTopicName.values()) {
+      // gated separately below, rather than unconditionally like the other single-topic types,
+      // since execution-proof gossip remains opt-in during interop testing
+      if (topicName == GossipTopicName.EXECUTION_PROOF) {
+        continue;
       }
+      topics.add(GossipTopics.getTopic(forkDigest, topicName, gossipEncoding));
     }
 
-    for (GossipTopicName topicName : GossipTopicName.values()) {
-      topics.add(GossipTopics.getTopic(forkDigest, topicName, gossipEncoding));
+    if (p2pConfig.isExecutionProofTopicEnabled()) {
+      topics.add(
+          GossipTopics.getTopic(forkDigest, GossipTopicName.EXECUTION_PROOF, gossipEncoding));
     }
 
     return topics;

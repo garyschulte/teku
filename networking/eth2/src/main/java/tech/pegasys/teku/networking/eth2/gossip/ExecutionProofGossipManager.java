@@ -13,35 +13,57 @@
 
 package tech.pegasys.teku.networking.eth2.gossip;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import tech.pegasys.teku.networking.eth2.gossip.subnets.ExecutionProofSubnetSubscriptions;
-import tech.pegasys.teku.spec.config.Constants;
-import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import java.util.Optional;
+import tech.pegasys.teku.infrastructure.async.AsyncRunner;
+import tech.pegasys.teku.infrastructure.bytes.Bytes4;
+import tech.pegasys.teku.networking.eth2.gossip.encoding.GossipEncoding;
+import tech.pegasys.teku.networking.eth2.gossip.topics.GossipTopicName;
+import tech.pegasys.teku.networking.eth2.gossip.topics.OperationProcessor;
+import tech.pegasys.teku.networking.p2p.gossip.GossipNetwork;
+import tech.pegasys.teku.spec.config.NetworkingSpecConfig;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
+import tech.pegasys.teku.spec.datastructures.state.ForkInfo;
+import tech.pegasys.teku.spec.schemas.SchemaDefinitionsElectra;
+import tech.pegasys.teku.statetransition.util.DebugDataDumper;
+import tech.pegasys.teku.storage.client.RecentChainData;
 
-public class ExecutionProofGossipManager implements GossipManager {
-
-  private static final Logger LOG = LogManager.getLogger();
-
-  private final ExecutionProofSubnetSubscriptions executionProofSubnetSubscriptions;
+/**
+ * Publishes/subscribes to the single global {@code execution_proof} gossip topic (EIP-8025), not a
+ * per-subnet fanout - matching Prysm's design (which explicitly migrated away from subnets, since
+ * attesters treat proofs as fungible and only need {@code k} of them, not a specific prover's
+ * subnet).
+ */
+public class ExecutionProofGossipManager extends AbstractGossipManager<SignedExecutionProof> {
 
   public ExecutionProofGossipManager(
-      final ExecutionProofSubnetSubscriptions executionProofSubnetSubscriptions) {
-    this.executionProofSubnetSubscriptions = executionProofSubnetSubscriptions;
-
-    for (int i = 0; i < Constants.MAX_EXECUTION_PROOF_SUBNETS; i++) {
-      executionProofSubnetSubscriptions.subscribeToSubnetId(i);
-    }
-  }
-
-  @Override
-  public void subscribe() {
-    executionProofSubnetSubscriptions.subscribe();
-  }
-
-  @Override
-  public void unsubscribe() {
-    executionProofSubnetSubscriptions.unsubscribe();
+      final RecentChainData recentChainData,
+      final SchemaDefinitionsElectra schemaDefinitions,
+      final AsyncRunner asyncRunner,
+      final GossipNetwork gossipNetwork,
+      final GossipEncoding gossipEncoding,
+      final ForkInfo forkInfo,
+      final Bytes4 forkDigest,
+      final OperationProcessor<SignedExecutionProof> processor,
+      final NetworkingSpecConfig networkingConfig,
+      final DebugDataDumper debugDataDumper) {
+    super(
+        recentChainData,
+        GossipTopicName.EXECUTION_PROOF,
+        asyncRunner,
+        gossipNetwork,
+        gossipEncoding,
+        forkInfo,
+        forkDigest,
+        processor,
+        schemaDefinitions.getSignedExecutionProofSchema(),
+        message -> Optional.empty(),
+        // execution proofs don't have a slot/fork of their own (see ExecutionProof's Javadoc) so
+        // are always considered to match the fork of the topic they arrived on, mirroring
+        // SignedBlsToExecutionChangeGossipManager
+        message -> forkInfo.getFork().getEpoch(),
+        networkingConfig,
+        GossipFailureLogger.createSuppressing(GossipTopicName.EXECUTION_PROOF.toString()),
+        debugDataDumper);
   }
 
   @Override
@@ -49,20 +71,7 @@ public class ExecutionProofGossipManager implements GossipManager {
     return true;
   }
 
-  public void subscribeToSubnetId(final int subnetId) {
-    executionProofSubnetSubscriptions.subscribeToSubnetId(subnetId);
-  }
-
-  public void unsubscribeFromSubnetId(final int subnetId) {
-    executionProofSubnetSubscriptions.unsubscribeFromSubnetId(subnetId);
-  }
-
-  public void publish(final ExecutionProof executionProof) {
-    executionProofSubnetSubscriptions
-        .gossip(executionProof)
-        .finish(
-            __ -> LOG.trace("{} published successfully", executionProof),
-            error ->
-                LOG.trace("Failed to publish {}, error: {}", executionProof, error.getMessage()));
+  public void publish(final SignedExecutionProof message) {
+    publishMessage(message);
   }
 }

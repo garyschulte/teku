@@ -23,7 +23,7 @@ import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.PayloadAttestationMessage;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadEnvelope;
-import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.SignedBlsToExecutionChange;
@@ -50,7 +50,7 @@ public interface GossipForkSubscriptions {
     return SafeFuture.COMPLETE;
   }
 
-  default void publishExecutionProof(final ExecutionProof executionProof) {
+  default void publishExecutionProof(final SignedExecutionProof signedExecutionProof) {
     // since Electra for now
   }
 
@@ -92,14 +92,6 @@ public interface GossipForkSubscriptions {
 
   default void unsubscribeFromDataColumnSidecarSubnet(final int subnetId) {
     // since Fulu
-  }
-
-  default void subscribeToExecutionProofSubnet(final int subnetId) {
-    // since Electra
-  }
-
-  default void unsubscribeFromExecutionProofSubnet(final int subnetId) {
-    // since Electra
   }
 
   default SafeFuture<Void> publishExecutionPayload(final SignedExecutionPayloadEnvelope message) {

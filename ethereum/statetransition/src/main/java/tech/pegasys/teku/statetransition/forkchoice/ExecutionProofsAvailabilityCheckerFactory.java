@@ -14,13 +14,13 @@
 package tech.pegasys.teku.statetransition.forkchoice;
 
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
-import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.logic.common.statetransition.availability.AvailabilityChecker;
 import tech.pegasys.teku.spec.logic.common.statetransition.availability.AvailabilityCheckerFactory;
 import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
 
 public class ExecutionProofsAvailabilityCheckerFactory
-    implements AvailabilityCheckerFactory<ExecutionProof> {
+    implements AvailabilityCheckerFactory<SignedExecutionProof> {
 
   private final ExecutionProofManager executionProofManager;
   private AvailabilityChecker<?> delegate;
@@ -38,13 +38,13 @@ public class ExecutionProofsAvailabilityCheckerFactory
     return executionProofManager;
   }
 
-  public AvailabilityChecker<ExecutionProof> createAvailabilityChecker(
+  public AvailabilityChecker<SignedExecutionProof> createAvailabilityChecker(
       final SignedBeaconBlock block, final AvailabilityChecker<?> delegate) {
     return new ExecutionProofsAvailabilityChecker(executionProofManager, block, delegate);
   }
 
   @Override
-  public AvailabilityChecker<ExecutionProof> createAvailabilityChecker(
+  public AvailabilityChecker<SignedExecutionProof> createAvailabilityChecker(
       final SignedBeaconBlock block) {
     return new ExecutionProofsAvailabilityChecker(executionProofManager, block, delegate);
   }
