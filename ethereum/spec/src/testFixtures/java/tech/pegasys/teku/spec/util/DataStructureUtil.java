@@ -154,6 +154,7 @@ import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadContext;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadHeader;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionProofSchema;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.execution.Transaction;
 import tech.pegasys.teku.spec.datastructures.execution.TransactionSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.capella.Withdrawal;
@@ -3143,17 +3144,23 @@ public final class DataStructureUtil {
   }
 
   public ExecutionProof randomExecutionProof() {
-    final SchemaDefinitionsElectra schemaDefinitionsElectra =
-        SchemaDefinitionsElectra.required(
-            spec.forMilestone(SpecMilestone.ELECTRA).getSchemaDefinitions());
     final ExecutionProofSchema executionProofSchema =
-        schemaDefinitionsElectra.getExecutionProofSchema();
+        getElectraSchemaDefinitions().getExecutionProofSchema();
     return executionProofSchema.create(
-        SszBytes32.of(randomBytes32()),
-        SszBytes32.of(randomBytes32()),
-        SszUInt64.of(randomUInt64()),
-        SszUInt64.of(randomUInt64()),
-        executionProofSchema.getProofDataSchema().fromBytes(randomBytes(5)));
+        randomBytes(5),
+        randomInt(256),
+        executionProofSchema.getPublicInputSchema().create(randomBytes32()));
+  }
+
+  public SignedExecutionProof randomSignedExecutionProof() {
+    return getElectraSchemaDefinitions()
+        .getSignedExecutionProofSchema()
+        .create(randomExecutionProof(), randomValidatorIndex(), randomSignature());
+  }
+
+  private SchemaDefinitionsElectra getElectraSchemaDefinitions() {
+    return SchemaDefinitionsElectra.required(
+        spec.forMilestone(SpecMilestone.ELECTRA).getSchemaDefinitions());
   }
 
   private int randomInt(final int origin, final int bound) {

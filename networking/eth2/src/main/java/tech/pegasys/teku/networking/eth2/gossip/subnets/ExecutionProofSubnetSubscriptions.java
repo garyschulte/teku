@@ -71,7 +71,9 @@ public class ExecutionProofSubnetSubscriptions extends CommitteeSubnetSubscripti
   }
 
   public SafeFuture<?> gossip(final ExecutionProof executionProof) {
-    int subnetId = executionProof.getSubnetId().get().intValue();
+    // TODO(M4): subnet-per-proof-type is a prototype artifact; the real design uses one global
+    // "execution_proof" topic. proof_type is a temporary stand-in for subnetId until then.
+    int subnetId = executionProof.getProofType();
     final String topic =
         GossipTopics.getExecutionProofSubnetTopic(forkDigest, subnetId, gossipEncoding);
     return gossipNetwork.gossip(topic, gossipEncoding.encode(executionProof));

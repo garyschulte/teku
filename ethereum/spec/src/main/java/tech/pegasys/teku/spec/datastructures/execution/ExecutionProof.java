@@ -14,13 +14,17 @@
 package tech.pegasys.teku.spec.datastructures.execution;
 
 import tech.pegasys.teku.infrastructure.ssz.collections.SszByteList;
-import tech.pegasys.teku.infrastructure.ssz.containers.Container5;
-import tech.pegasys.teku.infrastructure.ssz.primitive.SszBytes32;
-import tech.pegasys.teku.infrastructure.ssz.primitive.SszUInt64;
+import tech.pegasys.teku.infrastructure.ssz.containers.Container3;
+import tech.pegasys.teku.infrastructure.ssz.primitive.SszByte;
 import tech.pegasys.teku.infrastructure.ssz.tree.TreeNode;
 
-public class ExecutionProof
-    extends Container5<ExecutionProof, SszBytes32, SszBytes32, SszUInt64, SszUInt64, SszByteList> {
+/**
+ * EIP-8025 {@code ExecutionProof} — matches {@code specs/_features/eip8025/beacon-chain.md} (also
+ * the shape used by Prysm's {@code optional-proofs} branch): {@code proof_data}, {@code proof_type}
+ * (an opaque EL/zkVM-combo identifier, not a closed enum), and the {@link PublicInput} the proof
+ * attests to.
+ */
+public class ExecutionProof extends Container3<ExecutionProof, SszByteList, SszByte, PublicInput> {
 
   public ExecutionProof(final ExecutionProofSchema schema, final TreeNode node) {
     super(schema, node);
@@ -28,31 +32,27 @@ public class ExecutionProof
 
   public ExecutionProof(
       final ExecutionProofSchema schema,
-      final SszBytes32 blockRoot,
-      final SszBytes32 blockHash,
-      final SszUInt64 subnetId,
-      final SszUInt64 version,
-      final SszByteList proofData) {
-    super(schema, blockRoot, blockHash, subnetId, version, proofData);
-  }
-
-  public SszBytes32 getBlockRoot() {
-    return getField0();
-  }
-
-  public SszBytes32 getBlockHash() {
-    return getField1();
-  }
-
-  public SszUInt64 getSubnetId() {
-    return getField2();
-  }
-
-  public SszUInt64 getVersion() {
-    return getField3();
+      final SszByteList proofData,
+      final SszByte proofType,
+      final PublicInput publicInput) {
+    super(schema, proofData, proofType, publicInput);
   }
 
   public SszByteList getProofData() {
-    return getField4();
+    return getField0();
+  }
+
+  /** Returns the unsigned {@code uint8} EL/zkVM-combo identifier. */
+  public int getProofType() {
+    return Byte.toUnsignedInt(getField1().get());
+  }
+
+  public PublicInput getPublicInput() {
+    return getField2();
+  }
+
+  @Override
+  public ExecutionProofSchema getSchema() {
+    return (ExecutionProofSchema) super.getSchema();
   }
 }

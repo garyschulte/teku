@@ -64,6 +64,7 @@ import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadHeader;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadHeaderSchema;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadSchema;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionProofSchema;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProofSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.capella.WithdrawalSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ConsolidationRequestSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.DepositRequestSchema;
@@ -205,6 +206,8 @@ public class SchemaTypes {
   // Move this when we decide which fork this schema should be under
   public static final SchemaId<ExecutionProofSchema> EXECUTION_PROOF_SCHEMA =
       create("EXECUTION_PROOF_SCHEMA");
+  public static final SchemaId<SignedExecutionProofSchema> SIGNED_EXECUTION_PROOF_SCHEMA =
+      create("SIGNED_EXECUTION_PROOF_SCHEMA");
 
   // Fulu
   public static final SchemaId<CellSchema> CELL_SCHEMA = create("CELL_SCHEMA");

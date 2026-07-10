@@ -14,55 +14,38 @@
 package tech.pegasys.teku.spec.datastructures.execution;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import tech.pegasys.teku.infrastructure.ssz.collections.SszByteList;
-import tech.pegasys.teku.infrastructure.ssz.containers.ContainerSchema5;
-import tech.pegasys.teku.infrastructure.ssz.primitive.SszBytes32;
-import tech.pegasys.teku.infrastructure.ssz.primitive.SszUInt64;
+import tech.pegasys.teku.infrastructure.ssz.containers.ContainerSchema3;
+import tech.pegasys.teku.infrastructure.ssz.primitive.SszByte;
 import tech.pegasys.teku.infrastructure.ssz.schema.SszPrimitiveSchemas;
 import tech.pegasys.teku.infrastructure.ssz.schema.collections.SszByteListSchema;
 import tech.pegasys.teku.infrastructure.ssz.tree.TreeNode;
-import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 
 public class ExecutionProofSchema
-    extends ContainerSchema5<
-        ExecutionProof, SszBytes32, SszBytes32, SszUInt64, SszUInt64, SszByteList> {
+    extends ContainerSchema3<ExecutionProof, SszByteList, SszByte, PublicInput> {
 
-  // as per suggestion in https://github.com/Consensys/teku/pull/9853#discussion_r2329217191
-  // this may change in when we get smaller proofs
-  static final long MAX_PROOF_DATA_SIZE = 1024 * 1024;
+  // Matches Prysm's optional-proofs branch (OffchainLabs/prysm), the interop target for this
+  // feature. The eip8025 consensus-specs text currently says 4 MiB but that constant is still
+  // in flux upstream; Lighthouse's earlier prototype used 1 MiB. Revisit once the spec settles.
+  public static final long MAX_PROOF_SIZE = 300_000;
 
   public ExecutionProofSchema() {
     super(
         "ExecutionProof",
-        namedSchema("block_root", SszPrimitiveSchemas.BYTES32_SCHEMA),
-        namedSchema("block_hash", SszPrimitiveSchemas.BYTES32_SCHEMA),
-        namedSchema("subnet_id", SszPrimitiveSchemas.UINT64_SCHEMA),
-        namedSchema("version", SszPrimitiveSchemas.UINT64_SCHEMA),
-        namedSchema("proof_data", SszByteListSchema.create(MAX_PROOF_DATA_SIZE)));
+        namedSchema("proof_data", SszByteListSchema.create(MAX_PROOF_SIZE)),
+        namedSchema("proof_type", SszPrimitiveSchemas.UINT8_SCHEMA),
+        namedSchema("public_input", new PublicInputSchema()));
   }
 
   public ExecutionProof create(
-      final SszBytes32 blockRoot,
-      final SszBytes32 blockHash,
-      final SszUInt64 subnetId,
-      final SszUInt64 version,
-      final SszByteList proofData) {
-    return new ExecutionProof(this, blockRoot, blockHash, subnetId, version, proofData);
+      final SszByteList proofData, final SszByte proofType, final PublicInput publicInput) {
+    return new ExecutionProof(this, proofData, proofType, publicInput);
   }
 
   public ExecutionProof create(
-      final Bytes32 blockRoot,
-      final Bytes32 blockHash,
-      final UInt64 subnetId,
-      final UInt64 version,
-      final Bytes proofData) {
+      final Bytes proofData, final int proofType, final PublicInput publicInput) {
     return create(
-        SszBytes32.of(blockRoot),
-        SszBytes32.of(blockHash),
-        SszUInt64.of(subnetId),
-        SszUInt64.of(version),
-        getProofDataSchema().fromBytes(proofData));
+        getProofDataSchema().fromBytes(proofData), SszByte.asUInt8(proofType), publicInput);
   }
 
   @Override
@@ -71,7 +54,11 @@ public class ExecutionProofSchema
   }
 
   @SuppressWarnings("unchecked")
-  public SszByteListSchema<?> getProofDataSchema() {
-    return (SszByteListSchema<?>) getFieldSchema4();
+  public SszByteListSchema<SszByteList> getProofDataSchema() {
+    return (SszByteListSchema<SszByteList>) getFieldSchema0();
+  }
+
+  public PublicInputSchema getPublicInputSchema() {
+    return (PublicInputSchema) getFieldSchema2();
   }
 }

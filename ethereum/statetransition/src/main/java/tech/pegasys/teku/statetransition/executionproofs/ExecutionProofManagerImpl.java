@@ -89,7 +89,7 @@ public class ExecutionProofManagerImpl implements ExecutionProofManager {
       final ExecutionProof executionProof, final Optional<UInt64> arrivalTimestamp) {
     LOG.debug("Received execution proof for block {}", executionProof);
     return executionProofGossipValidator
-        .validate(executionProof, executionProof.getSubnetId().get())
+        .validate(executionProof)
         .thenApply(
             result -> {
               if (result.isAccept()) {
@@ -99,15 +99,16 @@ public class ExecutionProofManagerImpl implements ExecutionProofManager {
                 LOG.debug("Adding execution proof for block {} to cache", executionProof);
                 validatedExecutionProofsByBlockRoot
                     .computeIfAbsent(
-                        executionProof.getBlockRoot().get(), k -> ConcurrentHashMap.newKeySet())
+                        executionProof.getPublicInput().getNewPayloadRequestRoot().get(),
+                        k -> ConcurrentHashMap.newKeySet())
                     .add(executionProof);
                 LOG.debug(
                     "Added execution proof to cache {}",
                     validatedExecutionProofsByBlockRoot.toString());
               } else {
                 LOG.debug(
-                    "Rejected execution proof for block {}: {}",
-                    executionProof.getBlockRoot(),
+                    "Rejected execution proof for new payload request root {}: {}",
+                    executionProof.getPublicInput().getNewPayloadRequestRoot(),
                     result);
               }
               return result;
@@ -195,10 +196,10 @@ public class ExecutionProofManagerImpl implements ExecutionProofManager {
                                 blockContainer, subnetIndex, proofGenerationDelay)
                             .finish(
                                 proof -> {
-                                  LOG.trace("Generated proof for subnet {}", proof.getSubnetId());
+                                  LOG.trace("Generated proof for subnet {}", proof.getProofType());
                                   validatedExecutionProofsByBlockRoot
                                       .computeIfAbsent(
-                                          proof.getBlockRoot().get(),
+                                          proof.getPublicInput().getNewPayloadRequestRoot().get(),
                                           k -> ConcurrentHashMap.newKeySet())
                                       .add(proof);
                                   onCreatedProof.accept(proof);

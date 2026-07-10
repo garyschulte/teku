@@ -84,6 +84,7 @@ import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SIGNED_BLS_TO_
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SIGNED_BUILDER_BID_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SIGNED_EXECUTION_PAYLOAD_BID_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SIGNED_EXECUTION_PAYLOAD_ENVELOPE_SCHEMA;
+import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SIGNED_EXECUTION_PROOF_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SINGLE_ATTESTATION_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.STATUS_MESSAGE_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SYNCNETS_ENR_FIELD_SCHEMA;
@@ -150,6 +151,7 @@ import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.PayloadAttestat
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadBidSchema;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadEnvelopeSchema;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionProofSchema;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProofSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.bellatrix.ExecutionPayloadHeaderSchemaBellatrix;
 import tech.pegasys.teku.spec.datastructures.execution.versions.bellatrix.ExecutionPayloadSchemaBellatrix;
 import tech.pegasys.teku.spec.datastructures.execution.versions.capella.ExecutionPayloadHeaderSchemaCapella;
@@ -258,6 +260,7 @@ public class SchemaRegistryBuilder {
         .addProvider(createExecutionRequestsSchemaProvider())
         .addProvider(createSingleAttestationSchemaProvider())
         .addProvider(createExecutionProofSchemaProvider())
+        .addProvider(createSignedExecutionProofSchemaProvider())
 
         // FULU
         .addProvider(createCellSchemaProvider())
@@ -891,6 +894,13 @@ public class SchemaRegistryBuilder {
   private static SchemaProvider<?> createExecutionProofSchemaProvider() {
     return providerBuilder(EXECUTION_PROOF_SCHEMA)
         .withCreator(ELECTRA, (registry, specConfig, schemaName) -> new ExecutionProofSchema())
+        .build();
+  }
+
+  private static SchemaProvider<?> createSignedExecutionProofSchemaProvider() {
+    return providerBuilder(SIGNED_EXECUTION_PROOF_SCHEMA)
+        .withCreator(
+            ELECTRA, (registry, specConfig, schemaName) -> new SignedExecutionProofSchema(registry))
         .build();
   }
 

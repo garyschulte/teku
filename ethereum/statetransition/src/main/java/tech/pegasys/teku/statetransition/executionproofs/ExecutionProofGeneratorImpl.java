@@ -61,7 +61,7 @@ public class ExecutionProofGeneratorImpl implements ExecutionProofGenerator {
 
     final ExecutionProof executionProof =
         createProof(blockRoot, executionPayload, dummyWitness, subnetId);
-    LOG.trace("Generated proof for subnet {}", executionProof.getSubnetId());
+    LOG.trace("Generated proof for subnet {}", executionProof.getProofType());
 
     return SafeFuture.completedFuture(executionProof);
   }
@@ -96,12 +96,12 @@ public class ExecutionProofGeneratorImpl implements ExecutionProofGenerator {
     final ExecutionProofSchema executionProofSchema =
         schemaDefinitionsElectra.getExecutionProofSchema();
 
+    // TODO(M2): new_payload_request_root should be hash_tree_root(NewPayloadRequest), computed
+    // by NewPayloadRequestHasher. blockRoot is a placeholder correlation key until that lands.
     return executionProofSchema.create(
-        blockRoot,
-        executionPayload.getBlockHash(),
-        UInt64.valueOf(subnetId),
-        UInt64.ONE,
-        Bytes.of(dummyProof.getBytes(Charset.defaultCharset())));
+        Bytes.of(dummyProof.getBytes(Charset.defaultCharset())),
+        subnetId,
+        executionProofSchema.getPublicInputSchema().create(blockRoot));
   }
 
   private String getProof(

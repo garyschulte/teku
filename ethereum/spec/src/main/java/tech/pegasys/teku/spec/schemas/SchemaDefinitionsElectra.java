@@ -21,6 +21,7 @@ import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.EXECUTION_REQU
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.PENDING_CONSOLIDATIONS_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.PENDING_DEPOSITS_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.PENDING_PARTIAL_WITHDRAWALS_SCHEMA;
+import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SIGNED_EXECUTION_PROOF_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SINGLE_ATTESTATION_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.WITHDRAWAL_REQUEST_SCHEMA;
 
@@ -30,6 +31,7 @@ import tech.pegasys.teku.spec.config.SpecConfig;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.BeaconBlockBodyBuilder;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.electra.BeaconBlockBodyBuilderElectra;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionProofSchema;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProofSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ConsolidationRequestSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.DepositRequestSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ExecutionRequestsSchema;
@@ -60,6 +62,7 @@ public class SchemaDefinitionsElectra extends SchemaDefinitionsDeneb {
   private final SingleAttestationSchema singleAttestationSchema;
 
   private final ExecutionProofSchema executionProofSchema;
+  private final SignedExecutionProofSchema signedExecutionProofSchema;
 
   public SchemaDefinitionsElectra(final SchemaRegistry schemaRegistry) {
     super(schemaRegistry);
@@ -83,6 +86,7 @@ public class SchemaDefinitionsElectra extends SchemaDefinitionsDeneb {
             schemaRegistry.get(PENDING_CONSOLIDATIONS_SCHEMA).getElementSchema();
 
     this.executionProofSchema = schemaRegistry.get(EXECUTION_PROOF_SCHEMA);
+    this.signedExecutionProofSchema = schemaRegistry.get(SIGNED_EXECUTION_PROOF_SCHEMA);
   }
 
   public static SchemaDefinitionsElectra required(final SchemaDefinitions schemaDefinitions) {
@@ -158,5 +162,9 @@ public class SchemaDefinitionsElectra extends SchemaDefinitionsDeneb {
 
   public ExecutionProofSchema getExecutionProofSchema() {
     return executionProofSchema;
+  }
+
+  public SignedExecutionProofSchema getSignedExecutionProofSchema() {
+    return signedExecutionProofSchema;
   }
 }
