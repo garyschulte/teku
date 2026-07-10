@@ -33,6 +33,7 @@ import tech.pegasys.teku.infrastructure.ssz.SszList;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.datastructures.attestation.ProcessedAttestationListener;
+import tech.pegasys.teku.spec.datastructures.execution.SignedExecutionProof;
 import tech.pegasys.teku.spec.datastructures.metadata.ObjectAndMetaData;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
@@ -50,6 +51,7 @@ import tech.pegasys.teku.statetransition.blobs.BlockBlobSidecarsTrackersPool;
 import tech.pegasys.teku.statetransition.blobs.BlockBlobSidecarsTrackersPool.NewBlobSidecarSubscriber;
 import tech.pegasys.teku.statetransition.datacolumns.DataColumnSidecarManager;
 import tech.pegasys.teku.statetransition.datacolumns.ValidDataColumnSidecarsListener;
+import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
 import tech.pegasys.teku.statetransition.forkchoice.ForkChoiceNotifier;
 import tech.pegasys.teku.statetransition.forkchoice.ForkChoiceUpdatedResultSubscriber;
 import tech.pegasys.teku.statetransition.forkchoice.PreparedProposerInfo;
@@ -70,6 +72,7 @@ public class NodeDataProvider {
   private final OperationPool<SignedBlsToExecutionChange> blsToExecutionChangePool;
   private final SyncCommitteeContributionPool syncCommitteeContributionPool;
   private final BlockBlobSidecarsTrackersPool blockBlobSidecarsTrackersPool;
+  private final ExecutionProofManager executionProofManager;
   private final AttestationManager attestationManager;
   private final ActiveValidatorChannel activeValidatorChannel;
   private final boolean isLivenessTrackingEnabled;
@@ -87,6 +90,7 @@ public class NodeDataProvider {
       final OperationPool<SignedBlsToExecutionChange> blsToExecutionChangePool,
       final SyncCommitteeContributionPool syncCommitteeContributionPool,
       final BlockBlobSidecarsTrackersPool blockBlobSidecarsTrackersPool,
+      final ExecutionProofManager executionProofManager,
       final AttestationManager attestationManager,
       final boolean isLivenessTrackingEnabled,
       final ActiveValidatorChannel activeValidatorChannel,
@@ -102,6 +106,7 @@ public class NodeDataProvider {
     this.blsToExecutionChangePool = blsToExecutionChangePool;
     this.syncCommitteeContributionPool = syncCommitteeContributionPool;
     this.blockBlobSidecarsTrackersPool = blockBlobSidecarsTrackersPool;
+    this.executionProofManager = executionProofManager;
     this.attestationManager = attestationManager;
     this.activeValidatorChannel = activeValidatorChannel;
     this.isLivenessTrackingEnabled = isLivenessTrackingEnabled;
@@ -206,6 +211,11 @@ public class NodeDataProvider {
                           return result;
                         }))
         .orElseGet(() -> SafeFuture.failedFuture(new ServiceUnavailableException()));
+  }
+
+  public SafeFuture<InternalValidationResult> postExecutionProof(
+      final SignedExecutionProof signedExecutionProof) {
+    return executionProofManager.onLocallySubmittedExecutionProof(signedExecutionProof);
   }
 
   public SafeFuture<InternalValidationResult> postAttesterSlashing(

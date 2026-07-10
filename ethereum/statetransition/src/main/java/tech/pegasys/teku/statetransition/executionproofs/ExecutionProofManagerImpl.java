@@ -103,33 +103,45 @@ public class ExecutionProofManagerImpl implements ExecutionProofManager {
     LOG.debug("Received execution proof for block {}", signedExecutionProof);
     return executionProofGossipValidator
         .validate(signedExecutionProof)
+        .thenApply(result -> validateAndCache(signedExecutionProof, result));
+  }
+
+  @Override
+  public SafeFuture<InternalValidationResult> onLocallySubmittedExecutionProof(
+      final SignedExecutionProof signedExecutionProof) {
+    return executionProofGossipValidator
+        .validate(signedExecutionProof)
         .thenApply(
             result -> {
-              if (result.isAccept()) {
-                // TODO check if proof for same block and subnet already exists this could be a
-                // different proof for same block and subnet
-                // in this case do we want to replace a existing valid proof with a new one?
-                LOG.debug("Adding execution proof for block {} to cache", signedExecutionProof);
-                validatedExecutionProofsByBlockRoot
-                    .computeIfAbsent(
-                        signedExecutionProof
-                            .getMessage()
-                            .getPublicInput()
-                            .getNewPayloadRequestRoot()
-                            .get(),
-                        k -> ConcurrentHashMap.newKeySet())
-                    .add(signedExecutionProof);
-                LOG.debug(
-                    "Added execution proof to cache {}",
-                    validatedExecutionProofsByBlockRoot.toString());
-              } else {
-                LOG.debug(
-                    "Rejected execution proof for new payload request root {}: {}",
-                    signedExecutionProof.getMessage().getPublicInput().getNewPayloadRequestRoot(),
-                    result);
+              final InternalValidationResult cachedResult =
+                  validateAndCache(signedExecutionProof, result);
+              if (cachedResult.isAccept()) {
+                onCreatedProof.accept(signedExecutionProof);
               }
-              return result;
+              return cachedResult;
             });
+  }
+
+  private InternalValidationResult validateAndCache(
+      final SignedExecutionProof signedExecutionProof, final InternalValidationResult result) {
+    if (result.isAccept()) {
+      // TODO check if proof for same block and subnet already exists this could be a
+      // different proof for same block and subnet
+      // in this case do we want to replace a existing valid proof with a new one?
+      LOG.debug("Adding execution proof for block {} to cache", signedExecutionProof);
+      validatedExecutionProofsByBlockRoot
+          .computeIfAbsent(
+              signedExecutionProof.getMessage().getPublicInput().getNewPayloadRequestRoot().get(),
+              k -> ConcurrentHashMap.newKeySet())
+          .add(signedExecutionProof);
+      LOG.debug("Added execution proof to cache {}", validatedExecutionProofsByBlockRoot);
+    } else {
+      LOG.debug(
+          "Rejected execution proof for new payload request root {}: {}",
+          signedExecutionProof.getMessage().getPublicInput().getNewPayloadRequestRoot(),
+          result);
+    }
+    return result;
   }
 
   @Override

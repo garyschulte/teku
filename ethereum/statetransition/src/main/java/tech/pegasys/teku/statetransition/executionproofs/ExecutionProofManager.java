@@ -55,6 +55,12 @@ public interface ExecutionProofManager {
         }
 
         @Override
+        public SafeFuture<InternalValidationResult> onLocallySubmittedExecutionProof(
+            final SignedExecutionProof signedExecutionProof) {
+          return SafeFuture.completedFuture(InternalValidationResult.ACCEPT);
+        }
+
+        @Override
         public void recordNewPayloadRequestRoot(
             final Bytes32 blockRoot, final Bytes32 newPayloadRequestRoot) {}
 
@@ -87,6 +93,14 @@ public interface ExecutionProofManager {
   }
 
   SafeFuture<Void> generateProofs(SignedBlockContainer blockContainer);
+
+  /**
+   * Submits a {@link SignedExecutionProof} obtained locally (e.g. via the {@code POST
+   * /eth/v1/beacon/pool/execution_proofs} REST endpoint) - validates it exactly like a gossiped
+   * proof, and if ACCEPTed, broadcasts it to the network.
+   */
+  SafeFuture<InternalValidationResult> onLocallySubmittedExecutionProof(
+      SignedExecutionProof signedExecutionProof);
 
   /**
    * Records the {@code new_payload_request_root} (EIP-8025 {@code

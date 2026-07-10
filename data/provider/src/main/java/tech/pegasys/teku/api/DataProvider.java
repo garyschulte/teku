@@ -28,6 +28,7 @@ import tech.pegasys.teku.statetransition.attestation.AggregatingAttestationPool;
 import tech.pegasys.teku.statetransition.attestation.AttestationManager;
 import tech.pegasys.teku.statetransition.blobs.BlockBlobSidecarsTrackersPool;
 import tech.pegasys.teku.statetransition.datacolumns.DataColumnSidecarManager;
+import tech.pegasys.teku.statetransition.executionproofs.ExecutionProofManager;
 import tech.pegasys.teku.statetransition.forkchoice.ForkChoiceNotifier;
 import tech.pegasys.teku.statetransition.forkchoice.ProposersDataManager;
 import tech.pegasys.teku.statetransition.synccommittee.SyncCommitteeContributionPool;
@@ -114,6 +115,7 @@ public class DataProvider {
     private OperationPool<ProposerSlashing> proposerSlashingPool;
     private OperationPool<SignedVoluntaryExit> voluntaryExitPool;
     private OperationPool<SignedBlsToExecutionChange> blsToExecutionChangePool;
+    private ExecutionProofManager executionProofManager = ExecutionProofManager.NOOP;
     private SyncCommitteeContributionPool syncCommitteeContributionPool;
     private ProposersDataManager proposersDataManager;
     private ForkChoiceNotifier forkChoiceNotifier;
@@ -202,6 +204,11 @@ public class DataProvider {
       return this;
     }
 
+    public Builder executionProofManager(final ExecutionProofManager executionProofManager) {
+      this.executionProofManager = executionProofManager;
+      return this;
+    }
+
     public Builder syncCommitteeContributionPool(
         final SyncCommitteeContributionPool syncCommitteeContributionPool) {
       this.syncCommitteeContributionPool = syncCommitteeContributionPool;
@@ -253,6 +260,7 @@ public class DataProvider {
               blsToExecutionChangePool,
               syncCommitteeContributionPool,
               blockBlobSidecarsTrackersPool,
+              executionProofManager,
               attestationManager,
               isLivenessTrackingEnabled,
               activeValidatorChannel,

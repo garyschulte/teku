@@ -1333,6 +1333,7 @@ public class BeaconChainController extends Service implements BeaconChainControl
             .proposerSlashingPool(proposerSlashingPool)
             .voluntaryExitPool(voluntaryExitPool)
             .blsToExecutionChangePool(blsToExecutionChangePool)
+            .executionProofManager(executionProofManager)
             .syncCommitteeContributionPool(syncCommitteeContributionPool)
             .proposersDataManager(proposersDataManager)
             .forkChoiceNotifier(forkChoiceNotifier)
