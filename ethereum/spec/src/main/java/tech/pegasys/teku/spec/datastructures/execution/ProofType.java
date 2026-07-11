@@ -17,21 +17,22 @@ import java.util.Arrays;
 import java.util.Optional;
 
 /**
- * The canonical EIP-8025 zkVM/prover identifiers, confirmed against {@code eth-act/lighthouse}'s
- * {@code optional-proofs} branch ({@code beacon_node/execution_layer/src/eip8025/types.rs}) - the
- * actual interop reference implementation. The numeric value is what's carried in the {@link
- * ExecutionProof#getProofType()} SSZ field; the identifier is the kebab-case string a
- * zkboost-shaped prover/verifier service expects at its HTTP boundary (query params, URL paths, SSE
- * payloads).
+ * The canonical EIP-8025 zkVM/prover identifiers, confirmed directly against {@code
+ * eth-act/zkboost}'s own {@code crates/types/src/proof_type.rs} - the actual HTTP/SSZ counterparty
+ * Teku's verifier/prover clients talk to (not {@code eth-act/lighthouse}'s Rust {@code ProofType},
+ * which turned out to be a stale/out-of-sync 7-value enum including two {@code risc0} variants
+ * zkboost itself doesn't recognize - zkboost's own SSZ decoder explicitly rejects discriminant 6).
+ * The numeric value is what's carried in the {@link ExecutionProof#getProofType()} SSZ field; the
+ * identifier is the kebab-case string zkboost expects at its HTTP boundary (query params, URL
+ * paths, SSE payloads).
  */
 public enum ProofType {
-  ETHREX_RISC0(0, "ethrex-risc0"),
+  ETHREX_OPENVM(0, "ethrex-openvm"),
   ETHREX_SP1(1, "ethrex-sp1"),
   ETHREX_ZISK(2, "ethrex-zisk"),
   RETH_OPENVM(3, "reth-openvm"),
-  RETH_RISC0(4, "reth-risc0"),
-  RETH_SP1(5, "reth-sp1"),
-  RETH_ZISK(6, "reth-zisk");
+  RETH_SP1(4, "reth-sp1"),
+  RETH_ZISK(5, "reth-zisk");
 
   private final int value;
   private final String identifier;

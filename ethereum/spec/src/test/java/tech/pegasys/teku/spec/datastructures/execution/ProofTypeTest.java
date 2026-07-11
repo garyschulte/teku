@@ -20,21 +20,20 @@ import org.junit.jupiter.api.Test;
 class ProofTypeTest {
 
   @Test
-  void fromValue_matchesLighthousesCanonicalMapping() {
-    assertThat(ProofType.fromValue(0)).contains(ProofType.ETHREX_RISC0);
+  void fromValue_matchesZkboostsCanonicalMapping() {
+    assertThat(ProofType.fromValue(0)).contains(ProofType.ETHREX_OPENVM);
     assertThat(ProofType.fromValue(1)).contains(ProofType.ETHREX_SP1);
     assertThat(ProofType.fromValue(2)).contains(ProofType.ETHREX_ZISK);
     assertThat(ProofType.fromValue(3)).contains(ProofType.RETH_OPENVM);
-    assertThat(ProofType.fromValue(4)).contains(ProofType.RETH_RISC0);
-    assertThat(ProofType.fromValue(5)).contains(ProofType.RETH_SP1);
-    assertThat(ProofType.fromValue(6)).contains(ProofType.RETH_ZISK);
-    assertThat(ProofType.fromValue(7)).isEmpty();
+    assertThat(ProofType.fromValue(4)).contains(ProofType.RETH_SP1);
+    assertThat(ProofType.fromValue(5)).contains(ProofType.RETH_ZISK);
+    assertThat(ProofType.fromValue(6)).isEmpty();
   }
 
   @Test
-  void fromIdentifier_matchesLighthousesCanonicalMapping() {
+  void fromIdentifier_matchesZkboostsCanonicalMapping() {
     assertThat(ProofType.fromIdentifier("reth-zisk")).contains(ProofType.RETH_ZISK);
-    assertThat(ProofType.fromIdentifier("ethrex-risc0")).contains(ProofType.ETHREX_RISC0);
+    assertThat(ProofType.fromIdentifier("ethrex-openvm")).contains(ProofType.ETHREX_OPENVM);
     assertThat(ProofType.fromIdentifier("not-a-real-zkvm")).isEmpty();
   }
 
